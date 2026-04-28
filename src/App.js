@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
-// Genişletilmiş Nesne Havuzu
 const SHAPE_POOL = [
   { id: '1', type: 'SQUARE', color: '#3b82f6', shape: 'square', label: 'Mavi Kare' },
   { id: '2', type: 'CIRCLE', color: '#ef4444', shape: 'circle', label: 'Kırmızı Daire' },
@@ -28,7 +27,6 @@ function App() {
   const trialCountRef = useRef(0);
   const TOTAL_TRIALS = 40;
 
-  // Test her sıfırlandığında rastgele hedef seçer
   useEffect(() => {
     if (status === 'GIRIS') {
       const randomTarget = SHAPE_POOL[Math.floor(Math.random() * SHAPE_POOL.length)];
@@ -39,15 +37,22 @@ function App() {
   }, [status]);
 
   const generateDistractors = () => {
-    const count = Math.floor(Math.random() * 4);
+    const count = Math.floor(Math.random() * 5) + 2; 
     const colors = ['#ff0055', '#00ffcc', '#ffff00', '#ff8800', '#ff00ff', '#ffffff'];
     const list = [];
     for (let i = 0; i < count; i++) {
+      let top, left;
+      // Hedef nesnenin (merkez %50-%50) üstüne binmemesi için güvenli alan kontrolü
+      do {
+        top = Math.random() * 80 + 10; // %10 - %90 arası
+        left = Math.random() * 80 + 10;
+      } while (top > 35 && top < 65 && left > 35 && left < 65); // Merkez bölge yasaklı
+
       list.push({
         id: i,
-        top: Math.random() * 70 + 15 + '%',
-        left: Math.random() * 70 + 15 + '%',
-        size: Math.random() * 40 + 30 + 'px',
+        top: top + '%',
+        left: left + '%',
+        size: Math.random() * 30 + 30 + 'px',
         color: colors[Math.floor(Math.random() * colors.length)],
         shape: ['circle', 'rect', 'triangle'][Math.floor(Math.random() * 3)]
       });
@@ -61,7 +66,7 @@ function App() {
       return;
     }
 
-    const isTarget = Math.random() > 0.65;
+    const isTarget = Math.random() > 0.60;
     let selected;
     if (isTarget) {
       selected = target;
@@ -76,14 +81,14 @@ function App() {
       startTime: Date.now()
     });
 
-    const displayTime = Math.max(600, 1000 - (count * 10));
+    const displayTime = Math.max(500, 1000 - (count * 12));
 
     setTimeout(() => {
       setCurrentTrial(null);
       setTimeout(() => {
         trialCountRef.current++;
         nextTrial(count + 1);
-      }, 450);
+      }, 400);
     }, displayTime);
   }, [target]);
 
@@ -104,102 +109,78 @@ function App() {
 
   const renderShape = (s, isCenter = false) => {
     if (!s) return null;
-    const size = isCenter ? '120px' : s.size;
-    const commonStyle = {
+    const size = isCenter ? '140px' : s.size;
+    const style = {
       width: size,
       height: size,
       backgroundColor: s.color,
       position: isCenter ? 'relative' : 'absolute',
       top: isCenter ? 'auto' : s.top,
       left: isCenter ? 'auto' : s.left,
-      zIndex: isCenter ? 10 : 5
+      zIndex: isCenter ? 20 : 10,
+      transition: 'none'
     };
 
-    if (s.shape === 'circle') return <div style={{ ...commonStyle, borderRadius: '50%' }} />;
+    if (s.shape === 'circle') return <div style={{ ...style, borderRadius: '50%' }} />;
     if (s.shape === 'triangle') {
-      const side = parseInt(size) / 2;
       return <div style={{ 
         width: 0, height: 0, 
-        borderLeft: `${side}px solid transparent`, 
-        borderRight: `${side}px solid transparent`, 
+        borderLeft: `${parseInt(size)/2}px solid transparent`, 
+        borderRight: `${parseInt(size)/2}px solid transparent`, 
         borderBottom: `${size} solid ${s.color}`,
-        position: commonStyle.position, top: commonStyle.top, left: commonStyle.left, zIndex: commonStyle.zIndex
+        backgroundColor: 'transparent',
+        position: style.position, top: style.top, left: style.left, zIndex: style.zIndex
       }} />;
     }
-    if (s.shape === 'star') return <div style={{ ...commonStyle, clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' }} />;
-    if (s.shape === 'hexagon') return <div style={{ ...commonStyle, clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }} />;
-    if (s.shape === 'diamond') return <div style={{ ...commonStyle, clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }} />;
-    return <div style={{ ...commonStyle, borderRadius: s.shape === 'square' ? '15%' : '0' }} />;
+    if (s.shape === 'star') return <div style={{ ...style, clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' }} />;
+    if (s.shape === 'hexagon') return <div style={{ ...style, clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }} />;
+    if (s.shape === 'diamond') return <div style={{ ...style, clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }} />;
+    return <div style={{ ...style, borderRadius: s.shape === 'square' ? '15%' : '0' }} />;
   };
 
   const generatePDF = () => {
-    const corrects = testLog.filter(l => l.type === 'TARGET');
-    const errors = testLog.filter(l => l.type === 'DIST');
-    const attention = Math.round((corrects.length / (TOTAL_TRIALS * 0.35)) * 100);
-    const avgRt = corrects.length > 0 ? Math.round(corrects.reduce((a,b)=>a+b.rt,0)/corrects.length) : 0;
-
     const doc = new jsPDF();
-    doc.setFillColor(15, 23, 42); doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255); doc.setFontSize(20);
-    doc.text("FOCUS PRO LAB - ANALIZ RAPORU", 105, 25, {align:'center'});
-    
-    doc.autoTable({
-      startY: 50,
-      head: [[trFix('İNDEX'), 'SKOR', 'DURUM']],
-      body: [
-        [trFix('DİKKAT'), `%${attention}`, attention > 80 ? 'Normal' : 'Dusuk'],
-        ['ZAMANLAMA', `${avgRt} ms`, avgRt < 550 ? 'Hizli' : 'Yavas'],
-        [trFix('DÜRTÜSELLİK'), errors.length, errors.length < 3 ? 'Iyi' : 'Yuksek']
-      ],
-      headStyles: { fillColor: [59, 130, 246] }
-    });
-    doc.save("FocusProLab_Analiz.pdf");
+    doc.text("Focus Pro Lab Sonuclari", 20, 20);
+    doc.save("sonuc.pdf");
   };
 
   return (
-    <div style={{ backgroundColor: '#0a0f1e', color: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ backgroundColor: '#050a15', color: '#fff', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
       {status === 'GIRIS' && (
-        <div style={{ background: '#161e2e', padding: '40px', borderRadius: '24px', border: `2px solid ${target.color}`, textAlign: 'center', maxWidth: '700px' }}>
-          <h1 style={{ color: target.color, fontSize: '3.5rem', marginBottom: '10px' }}>Focus Pro Lab</h1>
-          <p style={{ fontSize: '1.4rem' }}>Lütfen sadece merkeze çıkan <span style={{color: target.color, fontWeight:'bold'}}>{target.label.toUpperCase()}</span> uyarısına tepki veriniz.</p>
-          <div style={{ margin: '40px auto', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', padding: '40px', border: `2px solid ${target.color}`, borderRadius: '30px', background: '#0f172a' }}>
+          <h1 style={{ color: target.color, fontSize: '3rem' }}>Focus Pro Lab</h1>
+          <p style={{ fontSize: '1.2rem' }}>Hedef Nesne: <b style={{color: target.color}}>{target.label}</b></p>
+          <div style={{ margin: '30px 0', display: 'flex', justifyContent: 'center' }}>
             {renderShape(target, true)}
           </div>
           <button 
-            style={{ padding: '15px 40px', fontSize: '1.2rem', cursor: 'pointer', background: target.color, color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold' }} 
+            style={{ padding: '15px 40px', background: target.color, color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}
             onClick={() => { setStatus('TEST'); nextTrial(0); }}
           >
-            TESTİ BAŞLAT
+            TESTE BAŞLA
           </button>
         </div>
       )}
 
       {status === 'TEST' && (
-        <div style={{ width: '90vw', height: '80vh', backgroundColor: '#000', borderRadius: '20px', border: `2px solid ${target.color}33`, position: 'relative', overflow: 'hidden' }} onMouseDown={handleInteraction} onTouchStart={handleInteraction}>
+        <div style={{ 
+          width: '95vw', height: '90vh', backgroundColor: '#000', borderRadius: '24px', 
+          border: `1px solid ${target.color}44`, position: 'relative', 
+          display: 'flex', alignItems: 'center', justifyContent: 'center' // MERKEZLEME BURADA
+        }}>
           {currentTrial && (
             <>
               {currentTrial.distractors.map(d => renderShape(d, false))}
-              {renderShape(currentTrial.shape, true)}
+              {renderShape(currentTrial.shape, true)} 
             </>
           )}
         </div>
       )}
 
       {status === 'SONUC' && (
-        <div style={{ background: '#161e2e', padding: '40px', borderRadius: '24px', border: `2px solid ${target.color}`, textAlign: 'center' }}>
-          <h1 style={{ color: target.color }}>Test Analizi</h1>
-          <div style={{ display: 'flex', gap: '20px', margin: '30px 0' }}>
-             <div style={{padding:'20px', background:'#1e293b', borderRadius:'15px'}}>
-                <h2 style={{color:target.color}}>%{Math.min(100, Math.round((testLog.filter(l=>l.type==='TARGET').length/14)*100))}</h2>
-                <p>Dikkat</p>
-             </div>
-             <div style={{padding:'20px', background:'#1e293b', borderRadius:'15px'}}>
-                <h2 style={{color:target.color}}>{testLog.length > 0 ? Math.round(testLog.reduce((a,b)=>a+b.rt,0)/testLog.length) : 0}ms</h2>
-                <p>Hız</p>
-             </div>
-          </div>
-          <button style={{ padding: '15px 30px', background: target.color, color:'#fff', border:'none', borderRadius:'10px', fontWeight:'bold', cursor:'pointer' }} onClick={generatePDF}>PDF İNDİR</button>
-          <button style={{ background:'transparent', border:`1px solid ${target.color}`, color:target.color, marginLeft:'10px', padding:'15px 30px', borderRadius:'10px', cursor:'pointer' }} onClick={() => setStatus('GIRIS')}>YENİDEN BAŞLA</button>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{color: target.color}}>Analiz Tamamlandı</h1>
+          <button style={{ padding: '15px 30px', background: target.color, border: 'none', color: '#fff', borderRadius: '10px' }} onClick={generatePDF}>PDF RAPORU AL</button>
         </div>
       )}
     </div>
