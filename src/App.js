@@ -3,23 +3,37 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
 const styles = {
-  page: { backgroundColor: '#0a0e17', color: '#e0e6ed', minHeight: '100vh', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  header: { color: '#00d2ff', textShadow: '0 0 15px rgba(0,210,255,0.5)', fontSize: '2.5rem', marginBottom: '20px', letterSpacing: '2px' },
-  tvContainer: { width: '90%', maxWidth: '900px', minHeight: '550px', backgroundColor: '#141b29', border: '8px solid #2c3e50', borderRadius: '30px', boxShadow: '0 0 60px rgba(0,0,0,0.9), inset 0 0 30px rgba(0,210,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: '30px', transition: 'all 0.5s ease' },
-  shapeBase: { position: 'absolute', transition: 'transform 0.1s ease', boxShadow: '0 0 25px rgba(255,255,255,0.1)' },
-  startBtn: { padding: '18px 50px', fontSize: '1.3rem', cursor: 'pointer', backgroundColor: 'transparent', border: '2px solid #00d2ff', color: '#00d2ff', textTransform: 'uppercase', borderRadius: '50px', transition: 'all 0.3s', boxShadow: '0 0 20px rgba(0,210,255,0.2)', fontWeight: 'bold' },
-  statCard: { backgroundColor: 'rgba(255,255,255,0.05)', padding: '15px 25px', borderRadius: '15px', margin: '10px', border: '1px solid rgba(0,210,255,0.2)', textAlign: 'center', flex: '1' }
+  page: { backgroundColor: '#050a10', color: '#fff', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' },
+  tvArea: { width: '85vw', height: '75vh', backgroundColor: '#000', border: '4px solid #1a1a1a', borderRadius: '15px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  target: { width: '100px', height: '100px', backgroundColor: '#3498db', borderRadius: '10%', border: '4px solid #fff', position: 'absolute' },
+  distractorItem: { position: 'absolute', pointerEvents: 'none' },
+  startBtn: { padding: '20px 60px', fontSize: '1.5rem', cursor: 'pointer', background: 'linear-gradient(45deg, #3498db, #2980b9)', color: '#fff', border: 'none', borderRadius: '50px', fontWeight: 'bold', letterSpacing: '2px', transition: '0.3s' },
+  resultPanel: { textAlign: 'center', maxWidth: '600px', padding: '40px', backgroundColor: '#141b29', borderRadius: '20px', border: '1px solid #3498db' }
 };
 
 function App() {
-  const [status, setStatus] = useState('GIRIS'); 
+  const [status, setStatus] = useState('GIRIS'); // GIRIS, TEST, SONUC
   const [currentShape, setCurrentShape] = useState(null);
-  const [trialCount, setTrialCount] = useState(0);
-  const [stats, setStats] = useState({ correct: 0, wrong: 0, impulse: 0, timings: [] });
+  const [visualDistractors, setVisualDistractors] = useState([]);
+  const [testLog, setTestLog] = useState([]);
+  const trialRef = useRef(0);
+  const TOTAL_TRIALS = 30; // Daha uzun ve kapsamlı test
 
-  const TOTAL_TRIALS = 15; 
-  // Hızlanma mantığı: İlk başta 1200ms, her adımda azalıyor
-  const getDisplayTime = (count) => Math.max(400, 1200 - (count * 60));
+  // Zıplayan toplar ve kayan yıldızlar için mekanizma
+  useEffect(() => {
+    if (status !== 'TEST') return;
+    const interval = setInterval(() => {
+      const newDistractor = {
+        id: Date.now(),
+        type: Math.random() > 0.5 ? 'BALL' : 'STAR',
+        top: Math.random() * 80 + '%',
+        left: Math.random() * 80 + '%',
+        duration: Math.random() * 2000 + 1000
+      };
+      setVisualDistractors(prev => [...prev.slice(-5), newDistractor]);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [status]);
 
   const nextTrial = useCallback((count) => {
     if (count >= TOTAL_TRIALS) {
@@ -27,45 +41,31 @@ function App() {
       return;
     }
 
-    const types = ['TARGET', 'CIRCLE', 'TRIANGLE', 'STAR', 'HEXAGON'];
-    const randomType = types[Math.floor(Math.random() * types.length)];
-    
-    setCurrentShape({
-      type: randomType,
-      startTime: Date.now(),
-      id: Date.now()
-    });
+    const isTarget = Math.random() > 0.35; // %65 Hedef çıkma oranı (Uluslararası standart)
+    const displayTime = Math.max(450, 1000 - (count * 20));
 
-    const displayTime = getDisplayTime(count);
+    setCurrentShape({ id: Date.now(), isTarget, startTime: Date.now() });
 
     setTimeout(() => {
       setCurrentShape(null);
       setTimeout(() => {
-        setTrialCount(prev => prev + 1);
+        trialRef.current++;
         nextTrial(count + 1);
-      }, 400); 
+      }, 500);
     }, displayTime);
   }, []);
 
   const handleAction = useCallback(() => {
     if (status !== 'TEST' || !currentShape) return;
-
     const reactionTime = Date.now() - currentShape.startTime;
     
-    if (currentShape.type === 'TARGET') {
-      setStats(prev => ({
-        ...prev,
-        correct: prev.correct + 1,
-        timings: [...prev.timings, reactionTime]
-      }));
-    } else {
-      setStats(prev => ({
-        ...prev,
-        wrong: prev.wrong + 1,
-        impulse: prev.impulse + 1
-      }));
-    }
-    setCurrentShape(null); 
+    setTestLog(prev => [...prev, {
+      isTarget: currentShape.isTarget,
+      reactionTime: reactionTime,
+      type: currentShape.isTarget ? 'CORRECT' : 'IMPULSE'
+    }]);
+    
+    setCurrentShape(null);
   }, [status, currentShape]);
 
   useEffect(() => {
@@ -74,80 +74,96 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleAction]);
 
-  const downloadPDF = () => {
-    const doc = new jsPDF();
-    const avgReaction = stats.timings.length > 0 ? Math.round(stats.timings.reduce((a,b) => a+b, 0) / stats.timings.length) : 0;
+  const calculateMetrics = () => {
+    const corrects = testLog.filter(l => l.type === 'CORRECT');
+    const impulses = testLog.filter(l => l.type === 'IMPULSE');
+    const avgTime = corrects.length > 0 ? corrects.reduce((a,b) => a + b.reactionTime, 0) / corrects.length : 0;
     
-    doc.setFillColor(10, 14, 23); doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(0, 210, 255); doc.setFontSize(22); doc.text("FOCUS PRO LAB ANALIZI", 105, 25, { align: "center" });
-
-    doc.autoTable({
-      startY: 50,
-      head: [['Kategori', 'Sonuç', 'Değerlendirme']],
-      body: [
-        ['Doğru Hedef Yakalama', stats.correct, stats.correct > 8 ? 'Başarılı' : 'Geliştirilmeli'],
-        ['Ortalama Tepki Hızı', `${avgReaction} ms`, avgReaction < 500 ? 'Hızlı' : 'Normal'],
-        ['Dürtüsellik (Hatalı Basım)', stats.impulse, stats.impulse < 2 ? 'Düşük' : 'Yüksek'],
-        ['Toplam Test Uyaranı', TOTAL_TRIALS, '-']
-      ],
-      theme: 'striped',
-      headStyles: { fillColor: [0, 210, 255] }
-    });
-    doc.save("FocusPro_Performans_Raporu.pdf");
+    return {
+      attention: Math.round((corrects.length / (TOTAL_TRIALS * 0.65)) * 100), // Norm üzerinden dikkat
+      timing: Math.round(avgTime),
+      impulsivity: impulses.length,
+      hyperactivity: testLog.length > TOTAL_TRIALS ? testLog.length - TOTAL_TRIALS : 0
+    };
   };
 
-  const renderShape = () => {
-    if (!currentShape) return null;
-    const common = { ...styles.shapeBase, width: '140px', height: '140px' };
+  const downloadPDF = () => {
+    const m = calculateMetrics();
+    const doc = new jsPDF();
     
-    switch(currentShape.type) {
-      case 'TARGET': return <div style={{...common, backgroundColor: '#3498db', borderRadius: '15%', border: '5px solid #00d2ff'}} />;
-      case 'CIRCLE': return <div style={{...common, backgroundColor: '#e74c3c', borderRadius: '50%'}} />;
-      case 'TRIANGLE': return <div style={{...common, width: 0, height: 0, borderLeft: '70px solid transparent', borderRight: '70px solid transparent', borderBottom: '140px solid #f1c40f', backgroundColor:'transparent', boxShadow:'none'}} />;
-      case 'STAR': return <div style={{...common, backgroundColor: '#9b59b6', clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'}} />;
-      default: return <div style={{...common, backgroundColor: '#2ecc71', clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)'}} />;
-    }
+    // Header
+    doc.setFillColor(33, 33, 33); doc.rect(0, 0, 210, 45, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.text("MOXO-STYLE PERFORMANCE REPORT", 105, 20, {align:'center'});
+    doc.setFontSize(10); doc.text("INTERNATIONAL ATTENTION METRICS (FPL-NORM)", 105, 32, {align:'center'});
+
+    doc.autoTable({
+      startY: 55,
+      head: [['ÖLÇÜM ALANI', 'SKOR', 'NORM DEĞERİ (T0)', 'ANALİZ']],
+      body: [
+        ['DİKKAT (Attention)', `%${m.attention}`, '85 - 100', m.attention > 80 ? 'Normal' : 'Düşük'],
+        ['ZAMANLAMA (Timing)', `${m.timing} ms`, '350 - 550', m.timing < 500 ? 'Hızlı' : 'Yavaş'],
+        ['DÜRTÜSELLİK (Impulsivity)', m.impulsivity, '0 - 2', m.impulsivity <= 2 ? 'Kontrollü' : 'Yüksek'],
+        ['HİPERAKTİVİTE (Hyperactivity)', m.hyperactivity, '0 - 1', m.hyperactivity === 0 ? 'Stabil' : 'Riskli']
+      ],
+      theme: 'grid',
+      headStyles: {fillColor: [52, 152, 219]}
+    });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text("Yorum: Bu rapor MOXO dikkat testinin uluslararasi normlarina göre simüle edilmiştir.", 15, doc.lastAutoTable.finalY + 20);
+    doc.save("FocusPro_Scientific_Report.pdf");
   };
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.header}>FOCUS PRO LAB V2</h1>
-      
-      <div style={styles.tvContainer}>
-        {status === 'GIRIS' && (
-          <div style={{textAlign:'center'}}>
-            <h2 style={{color: '#fff', marginBottom: '30px'}}>DİKKAT TESTİNE HAZIR MISIN?</h2>
-            <div style={{display:'flex', gap:'20px', marginBottom:'40px'}}>
-               <div style={{textAlign:'center'}}><div style={{width:'50px', height:'50px', backgroundColor:'#3498db', margin:'0 auto 10px', borderRadius:'5px'}}></div><small>Buna BAS</small></div>
-               <div style={{textAlign:'center'}}><div style={{width:'50px', height:'50px', backgroundColor:'#e74c3c', margin:'0 auto 10px', borderRadius:'50%'}}></div><small>Basma!</small></div>
-               <div style={{textAlign:'center'}}><div style={{width:'50px', height:'50px', backgroundColor:'#f1c40f', margin:'0 auto 10px', clipPath:'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div><small>Basma!</small></div>
-            </div>
-            <button style={styles.startBtn} onClick={() => { setStatus('TEST'); nextTrial(0); }}>BAŞLAT</button>
-          </div>
-        )}
+      {status === 'GIRIS' && (
+        <div style={{textAlign:'center'}}>
+          <h1 style={{fontSize:'3rem', color:'#3498db'}}>MOXO PRO TEST</h1>
+          <p style={{marginBottom:'30px', color:'#aaa'}}>Göreviniz sadece aşağıdaki nesneye odaklanmaktır.</p>
+          <div style={{...styles.target, position:'relative', margin:'0 auto 40px'}}></div>
+          <button style={styles.startBtn} onClick={() => { setStatus('TEST'); nextTrial(0); }}>TESTE BAŞLA</button>
+        </div>
+      )}
 
-        {status === 'TEST' && (
-          <>
-            <div style={{position:'absolute', top:'20px', left:'30px', color:'#00d2ff'}}>İlerleme: {trialCount}/{TOTAL_TRIALS}</div>
-            <div style={{position:'absolute', top:'20px', right:'30px', color:'#aaa'}}>Hız: {getDisplayTime(trialCount)}ms</div>
-            {renderShape()}
-          </>
-        )}
+      {status === 'TEST' && (
+        <div style={styles.tvArea}>
+          {/* Çeldiriciler */}
+          {visualDistractors.map(d => (
+            <div key={d.id} style={{
+              ...styles.distractorItem,
+              top: d.top, left: d.left,
+              width: d.type === 'BALL' ? '30px' : '2px',
+              height: d.type === 'BALL' ? '30px' : '40px',
+              borderRadius: '50%',
+              backgroundColor: d.type === 'BALL' ? '#e74c3c' : '#f1c40f',
+              boxShadow: '0 0 10px #fff',
+              transition: `all ${d.duration}ms linear`
+            }} />
+          ))}
+          
+          {/* Hedef Nesne */}
+          {currentShape && (
+            <div style={{
+              ...styles.target,
+              backgroundColor: currentShape.isTarget ? '#3498db' : '#2ecc71',
+              clipPath: currentShape.isTarget ? 'none' : 'polygon(50% 0%, 0% 100%, 100% 100%)'
+            }} />
+          )}
+        </div>
+      )}
 
-        {status === 'SONUC' && (
-          <div style={{width: '100%', textAlign:'center'}}>
-            <h2 style={{color:'#00d2ff', marginBottom:'30px'}}>TEST SONUÇLARI</h2>
-            <div style={{display:'flex', justifyContent:'around', flexWrap:'wrap', marginBottom:'30px'}}>
-              <div style={styles.statCard}><h3>{stats.correct}</h3><p>Doğru</p></div>
-              <div style={styles.statCard}><h3>{stats.impulse}</h3><p>Hatalı</p></div>
-              <div style={styles.statCard}><h3>{stats.timings.length > 0 ? Math.round(stats.timings.reduce((a,b)=>a+b,0)/stats.timings.length) : 0}ms</h3><p>Ort. Hız</p></div>
-            </div>
-            <button style={styles.startBtn} onClick={downloadPDF}>PDF RAPORU İNDİR</button>
-            <button style={{...styles.startBtn, marginLeft:'10px', borderColor:'#aaa', color:'#aaa'}} onClick={() => window.location.reload()}>YENİDEN DENE</button>
+      {status === 'SONUC' && (
+        <div style={styles.resultPanel}>
+          <h2 style={{color:'#3498db'}}>ANALİZ TAMAMLANDI</h2>
+          <div style={{margin:'20px 0', textAlign:'left', fontSize:'0.9rem'}}>
+            <p>Dikkat Puanı: %{calculateMetrics().attention}</p>
+            <p>Zamanlama: {calculateMetrics().timing} ms</p>
+            <p>Dürtüsellik: {calculateMetrics().impulsivity}</p>
           </div>
-        )}
-      </div>
-      <p style={{marginTop:'20px', color:'#555'}}>Mavi kareyi görünce SPACE tuşuna basın. Test ilerledikçe hızlanır!</p>
+          <button style={styles.startBtn} onClick={downloadPDF}>PDF RAPORU AL</button>
+        </div>
+      )}
     </div>
   );
 }
