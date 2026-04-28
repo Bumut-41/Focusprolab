@@ -6,13 +6,16 @@ const styles = {
   page: { backgroundColor: '#0a0f1e', color: '#fff', minHeight: '100vh', fontFamily: "'Segoe UI', sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   testArea: { width: '90vw', height: '80vh', backgroundColor: '#000', borderRadius: '20px', border: '2px solid #1e293b', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', touchAction: 'none' },
   centerTarget: { width: '120px', height: '120px', zIndex: 10, position: 'relative' },
-  distractor: { position: 'absolute', opacity: 0.8, zIndex: 5 },
-  btnPrimary: { padding: '15px 40px', fontSize: '1.2rem', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold' },
+  distractor: { position: 'absolute', opacity: 0.9, zIndex: 5 },
+  btnPrimary: { padding: '15px 40px', fontSize: '1.2rem', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', margin: '10px' },
+  resultContainer: { background: '#161e2e', padding: '40px', borderRadius: '24px', border: '1px solid #3b82f6', maxWidth: '800px', width: '90%', textAlign: 'center' },
+  statGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', margin: '30px 0' },
+  statBox: { background: '#1e293b', padding: '20px', borderRadius: '16px', borderBottom: '4px solid #3b82f6' }
 };
 
 function App() {
   const [status, setStatus] = useState('GIRIS');
-  const [currentTrial, setCurrentTrial] = useState(null); // { shape, distractors }
+  const [currentTrial, setCurrentTrial] = useState(null);
   const [testLog, setTestLog] = useState([]);
   const trialCountRef = useRef(0);
   const TOTAL_TRIALS = 40;
@@ -26,16 +29,17 @@ function App() {
   ];
 
   const generateDistractors = () => {
-    const count = Math.floor(Math.random() * 4); // 0-3 arası
+    const count = Math.floor(Math.random() * 4); // 0-3 adet
+    const colors = ['#ff0055', '#00ffcc', '#ffff00', '#ff8800', '#ff00ff'];
     const list = [];
     for (let i = 0; i < count; i++) {
       list.push({
         id: i,
         top: Math.random() * 80 + 5 + '%',
         left: Math.random() * 80 + 5 + '%',
-        size: Math.random() * 40 + 20 + 'px',
-        color: ['#444', '#222', '#333'][Math.floor(Math.random() * 3)],
-        type: Math.random() > 0.5 ? 'rect' : 'circle'
+        size: Math.random() * 50 + 30 + 'px',
+        color: colors[Math.floor(Math.random() * colors.length)],
+        shape: Math.random() > 0.5 ? 'circle' : 'rect'
       });
     }
     return list;
@@ -50,7 +54,6 @@ function App() {
     const isTarget = Math.random() > 0.6;
     const shape = isTarget ? shapes[0] : shapes[Math.floor(Math.random() * shapes.length)];
     
-    // Yeni turda hem simgeyi hem de yan öğeleri belirle
     setCurrentTrial({
       shape,
       distractors: generateDistractors(),
@@ -60,7 +63,7 @@ function App() {
     const displayTime = Math.max(500, 1000 - (count * 15));
 
     setTimeout(() => {
-      setCurrentTrial(null); // Her şey aynı anda kaybolur
+      setCurrentTrial(null);
       setTimeout(() => {
         trialCountRef.current++;
         nextTrial(count + 1);
@@ -82,46 +85,48 @@ function App() {
     return () => window.removeEventListener('keydown', handleInteraction);
   }, [handleInteraction]);
 
-  const renderShape = (s, isCenter = false) => {
-    const baseStyle = isCenter ? styles.centerTarget : { width: s.size, height: s.size, backgroundColor: s.color, ...styles.distractor, top: s.top, left: s.left };
-    const color = isCenter ? s.color : s.color;
-    
-    if (s.shape === 'circle' || s.type === 'circle') return <div style={{ ...baseStyle, backgroundColor: color, borderRadius: '50%' }} />;
-    if (s.shape === 'triangle') return <div style={{ width: 0, height: 0, borderLeft: '60px solid transparent', borderRight: '60px solid transparent', borderBottom: `120px solid ${color}` }} />;
-    return <div style={{ ...baseStyle, backgroundColor: color, borderRadius: s.shape === 'square' ? '12%' : '0' }} />;
-  };
-
-  const generatePDF = () => {
-    const doc = new jsPDF();
+  const calculateResults = () => {
     const corrects = testLog.filter(l => l.type === 'TARGET');
     const errors = testLog.filter(l => l.type === 'DIST');
     const attention = Math.round((corrects.length / (TOTAL_TRIALS * 0.4)) * 100);
     const avgRt = corrects.length > 0 ? Math.round(corrects.reduce((a,b)=>a+b.rt,0)/corrects.length) : 0;
+    return { attention, avgRt, impulsivity: errors.length };
+  };
 
+  const generatePDF = () => {
+    const res = calculateResults();
+    const doc = new jsPDF();
     doc.setFillColor(15, 23, 42); doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text("KLINIK DIKKAT ANALIZI (MOXO STANDART)", 105, 25, {align:'center'});
-
+    doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.text("MOXO STANDART RAPORU", 105, 25, {align:'center'});
     doc.autoTable({
       startY: 50,
-      head: [['INDEKS', 'SKOR', 'NORM', 'DURUM']],
+      head: [['PARAMETRE', 'SKOR', 'NORM', 'ANALİZ']],
       body: [
-        ['DIKKAT (Attention)', `%${attention}`, '%85-100', attention > 80 ? 'Normal' : 'Zorluk'],
-        ['ZAMANLAMA (Timing)', `${avgRt} ms`, '350-550ms', avgRt < 500 ? 'Hizli' : 'Yavas'],
-        ['DÜRTÜSELLIK (Impulsivity)', errors.length, '0-2', errors.length <= 2 ? 'Iyi' : 'Yuksek'],
+        ['DİKKAT (Attention)', `%${res.attention}`, '%85-100', res.attention > 80 ? 'Normal' : 'Düşük'],
+        ['ZAMANLAMA (Timing)', `${res.avgRt} ms`, '350-550ms', res.avgRt < 500 ? 'Hızlı' : 'Yavaş'],
+        ['DÜRTÜSELLİK (Impulsivity)', res.impulsivity, '0-2', res.impulsivity <= 2 ? 'İyi' : 'Yüksek'],
       ],
       theme: 'grid', headStyles: { fillColor: [59, 130, 246] }
     });
-    doc.save("FocusPro_Rapor.pdf");
+    doc.save("FocusPro_Klinik_Rapor.pdf");
+  };
+
+  const renderShape = (s, isCenter = false) => {
+    const baseStyle = isCenter ? styles.centerTarget : { width: s.size, height: s.size, backgroundColor: s.color, ...styles.distractor, top: s.top, left: s.left };
+    const color = s.color;
+    if (s.shape === 'circle') return <div style={{ ...baseStyle, backgroundColor: color, borderRadius: '50%' }} />;
+    if (s.shape === 'triangle') return <div style={{ width: 0, height: 0, borderLeft: '60px solid transparent', borderRight: '60px solid transparent', borderBottom: `120px solid ${color}` }} />;
+    return <div style={{ ...baseStyle, backgroundColor: color, borderRadius: s.shape === 'square' ? '12%' : '0' }} />;
   };
 
   return (
     <div style={styles.page}>
       {status === 'GIRIS' && (
-        <div style={{ textAlign: 'center', padding: '40px', background: '#161e2e', borderRadius: '20px' }}>
-          <h1 style={{ color: '#3b82f6' }}>FOCUS PRO V4</h1>
-          <p>Sadece merkeze çıkan MAVİ KARE'ye odaklanın.</p>
-          <div style={{ ...styles.centerTarget, backgroundColor: '#3b82f6', margin: '20px auto', borderRadius: '15%' }}></div>
-          <button style={styles.btnPrimary} onClick={() => { setStatus('TEST'); nextTrial(0); }}>TESTI BASLAT</button>
+        <div style={styles.resultContainer}>
+          <h1 style={{ color: '#3b82f6', fontSize: '2.5rem' }}>FOCUS PRO V5</h1>
+          <p>Lütfen sadece merkeze çıkan MAVİ KARE uyarınına tepki veriniz.</p>
+          <div style={{ ...styles.centerTarget, backgroundColor: '#3b82f6', margin: '30px auto', borderRadius: '15%' }}></div>
+          <button style={styles.btnPrimary} onClick={() => { setStatus('TEST'); nextTrial(0); }}>TESTİ BAŞLAT</button>
         </div>
       )}
 
@@ -129,10 +134,7 @@ function App() {
         <div style={styles.testArea} onMouseDown={handleInteraction} onTouchStart={handleInteraction}>
           {currentTrial && (
             <>
-              {/* Dikkat Dağıtıcılar (Distractors) */}
               {currentTrial.distractors.map(d => renderShape(d, false))}
-              
-              {/* Ana Hedef/Simge (Merkezde) */}
               {renderShape(currentTrial.shape, true)}
             </>
           )}
@@ -140,9 +142,16 @@ function App() {
       )}
 
       {status === 'SONUC' && (
-        <div style={{ textAlign: 'center' }}>
-          <h2>TEST TAMAMLANDI</h2>
-          <button style={styles.btnPrimary} onClick={generatePDF}>PDF RAPORU INDIR</button>
+        <div style={styles.resultContainer}>
+          <h2 style={{ color: '#10b981', fontSize: '2rem' }}>TEST ANALİZ SONUÇLARI</h2>
+          <div style={styles.statGrid}>
+            <div style={styles.statBox}><h3>%{calculateResults().attention}</h3><p>Dikkat</p></div>
+            <div style={styles.statBox}><h3>{calculateResults().avgRt}ms</h3><p>Zamanlama</p></div>
+            <div style={styles.statBox}><h3>{calculateResults().impulsivity}</h3><p>Dürtüsellik</p></div>
+          </div>
+          <p style={{ color: '#94a3b8', marginBottom: '30px' }}>Verileriniz MOXO uluslararası normları temel alınarak analiz edilmiştir.</p>
+          <button style={styles.btnPrimary} onClick={generatePDF}>PDF OLARAK İNDİR</button>
+          <button style={{ ...styles.btnPrimary, background: 'transparent', border: '1px solid #334155' }} onClick={() => window.location.reload()}>YENİDEN BAŞLAT</button>
         </div>
       )}
     </div>
