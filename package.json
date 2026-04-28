@@ -2,19 +2,12 @@
   "name": "focus-app",
   "version": "0.1.0",
   "private": true,
-  "dependencies": {
-    "jspdf-autotable": "^3.5.23",
-    "jspdf-autotable": "^3.5.23",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^13.5.0",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.7",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+"dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.5.23",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
