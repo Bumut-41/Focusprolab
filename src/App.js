@@ -14,14 +14,7 @@ import {
 
 pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
 
-ChartJS.register(
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Legend,
-  Tooltip
-);
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
 const SHAPES = [
   { id: "circle", label: "Daire" },
@@ -47,6 +40,16 @@ const COLORS = [
   "#65A30D",
   "#EA580C",
   "#0F172A"
+];
+
+const DISTRACTOR_TYPES = [
+  { icon: "🎸", animation: "shake", sound: "music" },
+  { icon: "🏀", animation: "bounce", sound: "bounce" },
+  { icon: "🏃", animation: "run", sound: "step" },
+  { icon: "🚑", animation: "drive", sound: "siren" },
+  { icon: "🐕", animation: "run", sound: "step" },
+  { icon: "🚴", animation: "drive", sound: "step" },
+  { icon: "🎈", animation: "float", sound: "none" }
 ];
 
 const TOTAL_TRIALS = 40;
@@ -119,8 +122,7 @@ function ShapeView({ shape, color, size = 120 }) {
       <div
         style={{
           ...base,
-          clipPath:
-            "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)"
+          clipPath: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)"
         }}
       />
     );
@@ -154,70 +156,18 @@ function ShapeView({ shape, color, size = 120 }) {
 
   if (shape === "plus") {
     return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          position: "relative",
-          display: "inline-block"
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.4,
-            top: 0,
-            width: size * 0.2,
-            height: size,
-            background: color
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: size * 0.4,
-            width: size,
-            height: size * 0.2,
-            background: color
-          }}
-        />
+      <div style={{ width: size, height: size, position: "relative", display: "inline-block" }}>
+        <div style={{ position: "absolute", left: size * 0.4, top: 0, width: size * 0.2, height: size, background: color }} />
+        <div style={{ position: "absolute", left: 0, top: size * 0.4, width: size, height: size * 0.2, background: color }} />
       </div>
     );
   }
 
   if (shape === "xshape") {
     return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          position: "relative",
-          display: "inline-block"
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.43,
-            top: 0,
-            width: size * 0.14,
-            height: size,
-            background: color,
-            transform: "rotate(45deg)"
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.43,
-            top: 0,
-            width: size * 0.14,
-            height: size,
-            background: color,
-            transform: "rotate(-45deg)"
-          }}
-        />
+      <div style={{ width: size, height: size, position: "relative", display: "inline-block" }}>
+        <div style={{ position: "absolute", left: size * 0.43, top: 0, width: size * 0.14, height: size, background: color, transform: "rotate(45deg)" }} />
+        <div style={{ position: "absolute", left: size * 0.43, top: 0, width: size * 0.14, height: size, background: color, transform: "rotate(-45deg)" }} />
       </div>
     );
   }
@@ -226,41 +176,15 @@ function ShapeView({ shape, color, size = 120 }) {
 }
 
 function getShapeSvg(shape, color) {
-  if (shape === "circle") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="35" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "square") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="12" y="12" width="56" height="56" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "triangle") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,8 8,72 72,72" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "diamond") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,40 40,74 6,40" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "pentagon") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,32 61,72 19,72 6,32" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "hexagon") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="22,8 58,8 74,40 58,72 22,72 6,40" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "vertical") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="28" y="6" width="24" height="68" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "horizontal") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="6" y="28" width="68" height="24" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "plus") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="32" y="8" width="16" height="64" fill="${color}"/><rect x="8" y="32" width="64" height="16" fill="${color}"/></svg>`;
-  }
+  if (shape === "circle") return `<svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="35" fill="${color}"/></svg>`;
+  if (shape === "square") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="12" y="12" width="56" height="56" fill="${color}"/></svg>`;
+  if (shape === "triangle") return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,8 8,72 72,72" fill="${color}"/></svg>`;
+  if (shape === "diamond") return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,40 40,74 6,40" fill="${color}"/></svg>`;
+  if (shape === "pentagon") return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,32 61,72 19,72 6,32" fill="${color}"/></svg>`;
+  if (shape === "hexagon") return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="22,8 58,8 74,40 58,72 22,72 6,40" fill="${color}"/></svg>`;
+  if (shape === "vertical") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="28" y="6" width="24" height="68" fill="${color}"/></svg>`;
+  if (shape === "horizontal") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="6" y="28" width="68" height="24" fill="${color}"/></svg>`;
+  if (shape === "plus") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="32" y="8" width="16" height="64" fill="${color}"/><rect x="8" y="32" width="64" height="16" fill="${color}"/></svg>`;
 
   return `<svg width="80" height="80" viewBox="0 0 80 80"><line x1="15" y1="15" x2="65" y2="65" stroke="${color}" stroke-width="14" stroke-linecap="round"/><line x1="65" y1="15" x2="15" y2="65" stroke="${color}" stroke-width="14" stroke-linecap="round"/></svg>`;
 }
@@ -276,9 +200,11 @@ export default function App() {
   const currentTrial = useRef(null);
   const counter = useRef(0);
   const timer = useRef(null);
+  const distractorInterval = useRef(null);
   const chartRef = useRef(null);
   const trialPlan = useRef([]);
   const lastInputTime = useRef(0);
+  const audioContextRef = useRef(null);
 
   const createNewTarget = () => {
     const newTarget = {
@@ -290,43 +216,109 @@ export default function App() {
     setTarget(newTarget);
   };
 
-  const createDistractors = () => {
-    const items = [];
-
-    const blockedCenter = {
-      xMin: 34,
-      xMax: 66,
-      yMin: 24,
-      yMax: 76
-    };
-
-    while (items.length < 12) {
-      const left = 6 + Math.random() * 88;
-      const top = 8 + Math.random() * 84;
-
-      const isInMainObjectZone =
-        left >= blockedCenter.xMin &&
-        left <= blockedCenter.xMax &&
-        top >= blockedCenter.yMin &&
-        top <= blockedCenter.yMax;
-
-      if (!isInMainObjectZone) {
-        items.push({
-          id: items.length,
-          shape: randomItem(SHAPES).id,
-          color: randomItem(COLORS),
-          size: 18 + Math.floor(Math.random() * 28),
-          left,
-          top
-        });
-      }
+  const initAudio = () => {
+    if (!audioContextRef.current) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) audioContextRef.current = new AudioContext();
     }
 
-    return items;
+    if (audioContextRef.current?.state === "suspended") {
+      audioContextRef.current.resume();
+    }
+  };
+
+  const playDistractorSound = (type) => {
+    const audioCtx = audioContextRef.current;
+    if (!audioCtx || type === "none") return;
+
+    const oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    if (type === "siren") {
+      oscillator.frequency.setValueAtTime(650, audioCtx.currentTime);
+      oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.25);
+    } else if (type === "music") {
+      oscillator.frequency.value = randomItem([440, 523, 659, 784]);
+    } else if (type === "bounce") {
+      oscillator.frequency.value = 260;
+    } else {
+      oscillator.frequency.value = 180;
+    }
+
+    oscillator.type = type === "siren" ? "sawtooth" : "sine";
+
+    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+
+    oscillator.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.38);
+  };
+
+  const createMovingDistractor = () => {
+    const type = randomItem(DISTRACTOR_TYPES);
+    const hasSound = Math.random() > 0.45;
+
+    let left;
+    let top;
+
+    do {
+      left = 6 + Math.random() * 88;
+      top = 8 + Math.random() * 84;
+    } while (left > 32 && left < 68 && top > 22 && top < 78);
+
+    const item = {
+      id: Date.now() + Math.random(),
+      ...type,
+      hasSound,
+      size: 34 + Math.floor(Math.random() * 18),
+      left,
+      top,
+      duration: 5000 + Math.floor(Math.random() * 10000)
+    };
+
+    setDistractors((prev) => {
+      const next = [...prev, item];
+      return next.slice(-3);
+    });
+
+    if (hasSound) playDistractorSound(type.sound);
+
+    setTimeout(() => {
+      setDistractors((prev) => prev.filter((d) => d.id !== item.id));
+    }, item.duration);
+  };
+
+  const startDistractorSystem = () => {
+    clearInterval(distractorInterval.current);
+
+    distractorInterval.current = setInterval(() => {
+      const shouldCreate = Math.random() > 0.25;
+      if (!shouldCreate) return;
+
+      const count = 1 + Math.floor(Math.random() * 3);
+
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => createMovingDistractor(), i * 450);
+      }
+    }, 3500);
+  };
+
+  const stopDistractorSystem = () => {
+    clearInterval(distractorInterval.current);
+    setDistractors([]);
   };
 
   useEffect(() => {
     createNewTarget();
+
+    return () => {
+      clearTimeout(timer.current);
+      clearInterval(distractorInterval.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -343,7 +335,6 @@ export default function App() {
 
   const registerResponse = () => {
     const now = performance.now();
-
     if (now - lastInputTime.current < 120) return;
 
     lastInputTime.current = now;
@@ -352,11 +343,7 @@ export default function App() {
 
   const createTrialPlan = () => {
     const targets = Array.from({ length: TARGET_COUNT }, () => true);
-    const nonTargets = Array.from(
-      { length: TOTAL_TRIALS - TARGET_COUNT },
-      () => false
-    );
-
+    const nonTargets = Array.from({ length: TOTAL_TRIALS - TARGET_COUNT }, () => false);
     trialPlan.current = shuffleArray([...targets, ...nonTargets]);
   };
 
@@ -376,33 +363,36 @@ export default function App() {
         shape: randomItem(SHAPES).id,
         color: randomItem(COLORS)
       };
-    } while (
-      obj.shape === currentTarget.shape &&
-      obj.color === currentTarget.color
-    );
+    } while (obj.shape === currentTarget.shape && obj.color === currentTarget.color);
 
     return obj;
   };
 
   const startTest = () => {
+    initAudio();
+
     trialLog.current = [];
     currentTrial.current = null;
     counter.current = 0;
     lastInputTime.current = 0;
+
     setScene(null);
     setDistractors([]);
     createTrialPlan();
     setView("PLAY");
+    startDistractorSystem();
   };
 
   const newTest = () => {
     clearTimeout(timer.current);
+    stopDistractorSystem();
+
     trialLog.current = [];
     currentTrial.current = null;
     counter.current = 0;
     lastInputTime.current = 0;
+
     setScene(null);
-    setDistractors([]);
     createNewTarget();
     setView("START");
   };
@@ -411,13 +401,11 @@ export default function App() {
     if (!currentTrial.current) return;
 
     const now = performance.now();
-
     currentTrial.current.responses.push(now);
 
     if (!currentTrial.current.responded) {
       currentTrial.current.responded = true;
-      currentTrial.current.reactionTime =
-        now - currentTrial.current.startTime;
+      currentTrial.current.reactionTime = now - currentTrial.current.startTime;
     }
   };
 
@@ -425,7 +413,7 @@ export default function App() {
     if (counter.current >= TOTAL_TRIALS) {
       currentTrial.current = null;
       setScene(null);
-      setDistractors([]);
+      stopDistractorSystem();
       setView("END");
       return;
     }
@@ -455,11 +443,8 @@ export default function App() {
       isTarget
     });
 
-    setDistractors(createDistractors());
-
     timer.current = setTimeout(() => {
       setScene(null);
-      setDistractors([]);
 
       const t = currentTrial.current;
 
@@ -496,28 +481,18 @@ export default function App() {
 
     const correctHits = targets.filter((t) => t.responded);
     const omissions = targets.filter((t) => !t.responded);
-    const lateResponses = targets.filter(
-      (t) => t.responded && t.reactionTime > LATE_RESPONSE_MS
-    );
+    const lateResponses = targets.filter((t) => t.responded && t.reactionTime > LATE_RESPONSE_MS);
     const impulsiveErrors = nonTargets.filter((t) => t.responded);
     const multiPress = logs.filter((t) => t.responseCount > 1);
 
     const avgReaction =
       correctHits.length > 0
-        ? Math.round(
-            correctHits.reduce((sum, t) => sum + t.reactionTime, 0) /
-              correctHits.length
-          )
+        ? Math.round(correctHits.reduce((sum, t) => sum + t.reactionTime, 0) / correctHits.length)
         : 0;
 
     const accuracy =
       logs.length > 0
-        ? Math.round(
-            ((correctHits.length +
-              nonTargets.filter((t) => !t.responded).length) /
-              logs.length) *
-              100
-          )
+        ? Math.round(((correctHits.length + nonTargets.filter((t) => !t.responded).length) / logs.length) * 100)
         : 0;
 
     return {
@@ -554,7 +529,6 @@ export default function App() {
 
   const getLevelText = (score) => {
     const level = getLevel(score);
-
     if (level === 1) return "İyi Performans";
     if (level === 2) return "Standart Performans";
     if (level === 3) return "Düşük Performans";
@@ -563,7 +537,6 @@ export default function App() {
 
   const getScoreColor = (score) => {
     const level = getLevel(score);
-
     if (level === 1) return "#16A34A";
     if (level === 2) return "#65A30D";
     if (level === 3) return "#F59E0B";
@@ -583,15 +556,7 @@ export default function App() {
 
     trialLog.current.forEach((trial) => {
       if (trial.isTarget && !trial.responded) attentionScore -= 8;
-
-      if (
-        trial.isTarget &&
-        trial.responded &&
-        trial.reactionTime > LATE_RESPONSE_MS
-      ) {
-        timingScore -= 4;
-      }
-
+      if (trial.isTarget && trial.responded && trial.reactionTime > LATE_RESPONSE_MS) timingScore -= 4;
       if (!trial.isTarget && trial.responded) impulsivityScore -= 10;
       if (trial.responseCount > 1) hyperactivityScore -= 10;
 
@@ -601,12 +566,7 @@ export default function App() {
       hyperactivityData.push(Math.max(hyperactivityScore, 0));
     });
 
-    return {
-      attentionData,
-      timingData,
-      impulsivityData,
-      hyperactivityData
-    };
+    return { attentionData, timingData, impulsivityData, hyperactivityData };
   };
 
   const buildChartData = () => {
@@ -616,38 +576,10 @@ export default function App() {
     return {
       labels,
       datasets: [
-        {
-          label: "Dikkat",
-          data: series.attentionData,
-          borderColor: "#2563EB",
-          backgroundColor: "#2563EB",
-          tension: 0.25,
-          pointRadius: 3
-        },
-        {
-          label: "Zamanlama",
-          data: series.timingData,
-          borderColor: "#16A34A",
-          backgroundColor: "#16A34A",
-          tension: 0.25,
-          pointRadius: 3
-        },
-        {
-          label: "Dürtüsellik",
-          data: series.impulsivityData,
-          borderColor: "#DC2626",
-          backgroundColor: "#DC2626",
-          tension: 0.25,
-          pointRadius: 3
-        },
-        {
-          label: "Hiperaktivite",
-          data: series.hyperactivityData,
-          borderColor: "#F59E0B",
-          backgroundColor: "#F59E0B",
-          tension: 0.25,
-          pointRadius: 3
-        }
+        { label: "Dikkat", data: series.attentionData, borderColor: "#2563EB", backgroundColor: "#2563EB", tension: 0.25, pointRadius: 3 },
+        { label: "Zamanlama", data: series.timingData, borderColor: "#16A34A", backgroundColor: "#16A34A", tension: 0.25, pointRadius: 3 },
+        { label: "Dürtüsellik", data: series.impulsivityData, borderColor: "#DC2626", backgroundColor: "#DC2626", tension: 0.25, pointRadius: 3 },
+        { label: "Hiperaktivite", data: series.hyperactivityData, borderColor: "#F59E0B", backgroundColor: "#F59E0B", tension: 0.25, pointRadius: 3 }
       ]
     };
   };
@@ -661,11 +593,7 @@ export default function App() {
       tooltip: { enabled: true }
     },
     scales: {
-      y: {
-        min: 0,
-        max: 100,
-        ticks: { stepSize: 10 }
-      }
+      y: { min: 0, max: 100, ticks: { stepSize: 10 } }
     }
   });
 
@@ -676,9 +604,7 @@ export default function App() {
       const list = trialLog.current.filter((t) => t.section === section);
 
       const omissions = list.filter((t) => t.isTarget && !t.responded).length;
-      const late = list.filter(
-        (t) => t.isTarget && t.responded && t.reactionTime > LATE_RESPONSE_MS
-      ).length;
+      const late = list.filter((t) => t.isTarget && t.responded && t.reactionTime > LATE_RESPONSE_MS).length;
       const impulse = list.filter((t) => !t.isTarget && t.responded).length;
       const hyper = list.filter((t) => t.responseCount > 1).length;
 
@@ -699,37 +625,25 @@ export default function App() {
       `Test ${metrics.totalTrials} deneme üzerinden tamamlandı. Genel doğruluk oranı %${metrics.accuracy}, ortalama tepki süresi ${metrics.avgReaction} ms olarak hesaplandı.`
     );
 
-    if (scores.attention >= 6) {
-      comments.push("Dikkat alanında belirgin zorlanma görüldü.");
-    } else if (scores.attention >= 3) {
-      comments.push("Dikkat performansında zaman zaman düşüş görüldü.");
-    } else {
-      comments.push("Dikkat performansı genel olarak korunmuştur.");
-    }
+    comments.push(
+      "Test sırasında hareketli ve zaman zaman sesli dikkat dağıtıcı uyaranlar kullanıldı."
+    );
 
-    if (scores.timing >= 6) {
-      comments.push("Zamanlama alanında belirgin gecikme vardır.");
-    } else if (scores.timing >= 3) {
-      comments.push("Zamanlama performansında hafif-orta düzeyde gecikmeler görülmüştür.");
-    } else {
-      comments.push("Zamanlama becerisi genel olarak yeterli görünmektedir.");
-    }
+    if (scores.attention >= 6) comments.push("Dikkat alanında belirgin zorlanma görüldü.");
+    else if (scores.attention >= 3) comments.push("Dikkat performansında zaman zaman düşüş görüldü.");
+    else comments.push("Dikkat performansı genel olarak korunmuştur.");
 
-    if (scores.impulsivity >= 6) {
-      comments.push("Dürtüsel tepki eğilimi yüksektir.");
-    } else if (scores.impulsivity >= 3) {
-      comments.push("Dürtüsel yanıtlar zaman zaman ortaya çıkmıştır.");
-    } else {
-      comments.push("Dürtü kontrolü genel olarak korunmuştur.");
-    }
+    if (scores.timing >= 6) comments.push("Zamanlama alanında belirgin gecikme vardır.");
+    else if (scores.timing >= 3) comments.push("Zamanlama performansında hafif-orta düzeyde gecikmeler görülmüştür.");
+    else comments.push("Zamanlama becerisi genel olarak yeterli görünmektedir.");
 
-    if (scores.hyperactivity >= 6) {
-      comments.push("Motor yanıt kontrolünde belirgin düzensizlik vardır.");
-    } else if (scores.hyperactivity >= 3) {
-      comments.push("Motor yanıt kontrolünde zaman zaman düzensizlik görülmüştür.");
-    } else {
-      comments.push("Motor yanıt kontrolü genel olarak düzenlidir.");
-    }
+    if (scores.impulsivity >= 6) comments.push("Dürtüsel tepki eğilimi yüksektir.");
+    else if (scores.impulsivity >= 3) comments.push("Dürtüsel yanıtlar zaman zaman ortaya çıkmıştır.");
+    else comments.push("Dürtü kontrolü genel olarak korunmuştur.");
+
+    if (scores.hyperactivity >= 6) comments.push("Motor yanıt kontrolünde belirgin düzensizlik vardır.");
+    else if (scores.hyperactivity >= 3) comments.push("Motor yanıt kontrolünde zaman zaman düzensizlik görülmüştür.");
+    else comments.push("Motor yanıt kontrolü genel olarak düzenlidir.");
 
     return comments.join(" ");
   };
@@ -739,45 +653,23 @@ export default function App() {
     const metrics = getRawMetrics();
     const sections = getSectionSummary();
     const currentTarget = targetRef.current;
-
     const chart = chartRef.current;
     const chartImage = chart?.canvas?.toDataURL("image/png", 1.0);
-
-    const scoreCards = [
-      ["Dikkat", scores.attention],
-      ["Zamanlama", scores.timing],
-      ["Dürtüsellik", scores.impulsivity],
-      ["Hiperaktivite", scores.hyperactivity]
-    ];
 
     const docDefinition = {
       pageSize: "A4",
       pageMargins: [36, 36, 36, 36],
-      defaultStyle: {
-        font: "Roboto",
-        fontSize: 10
-      },
+      defaultStyle: { font: "Roboto", fontSize: 10 },
       content: [
-        {
-          text: "Dikkat Performans Raporu",
-          fontSize: 22,
-          bold: true,
-          color: "#142440",
-          margin: [0, 0, 0, 6]
-        },
-        {
-          text: "Bilgisayarlı dikkat ve tepki kontrolü değerlendirmesi",
-          fontSize: 11,
-          color: "#475569",
-          margin: [0, 0, 0, 20]
-        },
+        { text: "Dikkat Performans Raporu", fontSize: 22, bold: true, color: "#142440", margin: [0, 0, 0, 6] },
+        { text: "Bilgisayarlı dikkat ve tepki kontrolü değerlendirmesi", fontSize: 11, color: "#475569", margin: [0, 0, 0, 20] },
         {
           columns: [
             {
               width: "*",
               stack: [
                 { text: "Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR") },
-                { text: "Test Tipi: 10 nesneli hedef / hedef dışı uyaran görevi", margin: [0, 6, 0, 0] },
+                { text: "Test Tipi: Hareketli/sesli dikkat dağıtıcı destekli hedef uyaran görevi", margin: [0, 6, 0, 0] },
                 { text: "Toplam Deneme: " + TOTAL_TRIALS, margin: [0, 6, 0, 0] }
               ]
             },
@@ -792,22 +684,23 @@ export default function App() {
           margin: [0, 0, 0, 20]
         },
         {
-          columns: scoreCards.map(([title, value]) => ({
+          columns: [
+            ["Dikkat", scores.attention],
+            ["Zamanlama", scores.timing],
+            ["Dürtüsellik", scores.impulsivity],
+            ["Hiperaktivite", scores.hyperactivity]
+          ].map(([title, value]) => ({
             width: "*",
             table: {
               widths: ["*"],
-              body: [
-                [
-                  {
-                    stack: [
-                      { text: title, color: "white", bold: true, fontSize: 11 },
-                      { text: String(value), color: "white", bold: true, fontSize: 22, margin: [0, 8, 0, 0] }
-                    ],
-                    fillColor: getScoreColor(value),
-                    margin: [10, 10, 10, 10]
-                  }
-                ]
-              ]
+              body: [[{
+                stack: [
+                  { text: title, color: "white", bold: true, fontSize: 11 },
+                  { text: String(value), color: "white", bold: true, fontSize: 22, margin: [0, 8, 0, 0] }
+                ],
+                fillColor: getScoreColor(value),
+                margin: [10, 10, 10, 10]
+              }]]
             },
             layout: "noBorders",
             margin: [0, 0, 8, 0]
@@ -833,8 +726,7 @@ export default function App() {
             ]
           },
           layout: {
-            fillColor: (rowIndex) =>
-              rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           },
@@ -861,22 +753,13 @@ export default function App() {
             ]
           },
           layout: {
-            fillColor: (rowIndex) =>
-              rowIndex === 0 ? "#374151" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) => rowIndex === 0 ? "#374151" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           }
         },
-        {
-          text: "Performans Grafiği",
-          fontSize: 15,
-          bold: true,
-          margin: [0, 20, 0, 8],
-          pageBreak: "before"
-        },
-        chartImage
-          ? { image: chartImage, width: 520, margin: [0, 0, 0, 20] }
-          : { text: "Grafik görüntüsü alınamadı.", margin: [0, 0, 0, 20] },
+        { text: "Performans Grafiği", fontSize: 15, bold: true, margin: [0, 20, 0, 8], pageBreak: "before" },
+        chartImage ? { image: chartImage, width: 520, margin: [0, 0, 0, 20] } : { text: "Grafik görüntüsü alınamadı.", margin: [0, 0, 0, 20] },
         {
           table: {
             headerRows: 1,
@@ -899,30 +782,15 @@ export default function App() {
             ]
           },
           layout: {
-            fillColor: (rowIndex) =>
-              rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           },
           margin: [0, 0, 0, 20]
         },
-        {
-          text: "Otomatik Yorum",
-          fontSize: 15,
-          bold: true,
-          margin: [0, 0, 0, 8]
-        },
-        {
-          text: generateSmartComment(scores, metrics),
-          fontSize: 10,
-          lineHeight: 1.3,
-          margin: [0, 0, 0, 40]
-        },
-        {
-          text: "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
-          fontSize: 8,
-          color: "#64748B"
-        }
+        { text: "Otomatik Yorum", fontSize: 15, bold: true, margin: [0, 0, 0, 8] },
+        { text: generateSmartComment(scores, metrics), fontSize: 10, lineHeight: 1.3, margin: [0, 0, 0, 40] },
+        { text: "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.", fontSize: 8, color: "#64748B" }
       ]
     };
 
@@ -933,106 +801,60 @@ export default function App() {
   const metrics = getRawMetrics();
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#EEF2F7",
-        fontFamily: "Arial, sans-serif",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 24
-      }}
-    >
-      {view === "START" && target && (
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 760,
-            background: "white",
-            borderRadius: 24,
-            padding: 36,
-            boxShadow: "0 18px 50px rgba(15,23,42,0.12)",
-            textAlign: "center"
-          }}
-        >
-          <h1 style={{ marginTop: 0 }}>Dikkat Performans Testi</h1>
+    <div style={{ minHeight: "100vh", background: "#EEF2F7", fontFamily: "Arial, sans-serif", display: "flex", justifyContent: "center", alignItems: "center", padding: 24 }}>
+      <style>
+        {`
+          @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-28px); }
+          }
 
+          @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-14deg); }
+            75% { transform: rotate(14deg); }
+          }
+
+          @keyframes run {
+            0% { transform: translateX(-22px); }
+            50% { transform: translateX(22px); }
+            100% { transform: translateX(-22px); }
+          }
+
+          @keyframes drive {
+            0% { transform: translateX(-35px); }
+            100% { transform: translateX(35px); }
+          }
+
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+          }
+        `}
+      </style>
+
+      {view === "START" && target && (
+        <div style={{ width: "100%", maxWidth: 760, background: "white", borderRadius: 24, padding: 36, boxShadow: "0 18px 50px rgba(15,23,42,0.12)", textAlign: "center" }}>
+          <h1 style={{ marginTop: 0 }}>Dikkat Performans Testi</h1>
           <p style={{ fontSize: 17, color: "#475569" }}>
-            Aşağıdaki nesne hedef olarak seçildi. Test boyunca sadece bu şekil
-            ve bu renk birlikte göründüğünde SPACE tuşuna basın. Mouse ile
-            tıklama ve dokunmatik ekranlarda dokunma da cevap olarak kabul edilir.
+            Aşağıdaki nesne hedef olarak seçildi. Test boyunca sadece bu şekil ve bu renk birlikte göründüğünde SPACE tuşuna basın. Mouse ile tıklama ve dokunmatik ekranlarda dokunma da cevap olarak kabul edilir.
           </p>
 
-          <div
-            style={{
-              margin: "30px auto",
-              width: 190,
-              height: 190,
-              borderRadius: 28,
-              border: "3px solid #142440",
-              background: "#F8FAFC",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 10px 30px rgba(15,23,42,0.12)"
-            }}
-          >
+          <div style={{ margin: "30px auto", width: 190, height: 190, borderRadius: 28, border: "3px solid #142440", background: "#F8FAFC", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 30px rgba(15,23,42,0.12)" }}>
             <ShapeView shape={target.shape} color={target.color} size={110} />
           </div>
 
-          <button
-            onClick={startTest}
-            style={{
-              background: "#142440",
-              color: "white",
-              border: "none",
-              borderRadius: 14,
-              padding: "15px 34px",
-              fontSize: 17,
-              cursor: "pointer",
-              fontWeight: "bold"
-            }}
-          >
+          <button onClick={startTest} style={{ background: "#142440", color: "white", border: "none", borderRadius: 14, padding: "15px 34px", fontSize: 17, cursor: "pointer", fontWeight: "bold" }}>
             Teste Başla
           </button>
         </div>
       )}
 
       {view === "PLAY" && (
-        <div
-          onClick={registerResponse}
-          onTouchStart={registerResponse}
-          style={{
-            width: "100%",
-            maxWidth: 760,
-            height: 440,
-            background: "white",
-            borderRadius: 24,
-            boxShadow: "0 18px 50px rgba(15,23,42,0.12)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-            overflow: "hidden",
-            cursor: "pointer",
-            touchAction: "manipulation",
-            userSelect: "none"
-          }}
-        >
+        <div onClick={registerResponse} onTouchStart={registerResponse} style={{ width: "100%", maxWidth: 760, height: 440, background: "white", borderRadius: 24, boxShadow: "0 18px 50px rgba(15,23,42,0.12)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", cursor: "pointer", touchAction: "manipulation", userSelect: "none" }}>
           {distractors.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                position: "absolute",
-                left: `${item.left}%`,
-                top: `${item.top}%`,
-                transform: "translate(-50%, -50%)",
-                opacity: 0.55,
-                pointerEvents: "none"
-              }}
-            >
-              <ShapeView shape={item.shape} color={item.color} size={item.size} />
+            <div key={item.id} style={{ position: "absolute", left: `${item.left}%`, top: `${item.top}%`, fontSize: item.size, animation: `${item.animation} 1.2s infinite`, pointerEvents: "none", opacity: 0.9 }}>
+              {item.icon}
             </div>
           ))}
 
@@ -1045,16 +867,7 @@ export default function App() {
       )}
 
       {view === "END" && target && (
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 980,
-            background: "white",
-            borderRadius: 24,
-            padding: 34,
-            boxShadow: "0 18px 50px rgba(15,23,42,0.12)"
-          }}
-        >
+        <div style={{ width: "100%", maxWidth: 980, background: "white", borderRadius: 24, padding: 34, boxShadow: "0 18px 50px rgba(15,23,42,0.12)" }}>
           <h1 style={{ textAlign: "center", marginTop: 0 }}>Test Tamamlandı</h1>
 
           <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -1064,29 +877,14 @@ export default function App() {
             </div>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 14,
-              marginTop: 24,
-              marginBottom: 22
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 24, marginBottom: 22 }}>
             <ScoreBox title="Dikkat" value={scores.attention} color={getScoreColor(scores.attention)} />
             <ScoreBox title="Zamanlama" value={scores.timing} color={getScoreColor(scores.timing)} />
             <ScoreBox title="Dürtüsellik" value={scores.impulsivity} color={getScoreColor(scores.impulsivity)} />
             <ScoreBox title="Hiperaktivite" value={scores.hyperactivity} color={getScoreColor(scores.hyperactivity)} />
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 14,
-              marginBottom: 28
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
             <MetricBox title="Doğruluk" value={`%${metrics.accuracy}`} />
             <MetricBox title="Ort. Tepki" value={`${metrics.avgReaction} ms`} />
             <MetricBox title="Doğru Hedef" value={metrics.correctHits} />
@@ -1094,7 +892,6 @@ export default function App() {
           </div>
 
           <h3>Performans Grafiği</h3>
-
           <div style={{ width: "100%", height: 370 }}>
             <Line ref={chartRef} data={buildChartData()} options={buildChartOptions()} />
           </div>
@@ -1103,35 +900,11 @@ export default function App() {
           <p style={{ lineHeight: 1.6 }}>{generateSmartComment(scores, metrics)}</p>
 
           <div style={{ textAlign: "center", marginTop: 26 }}>
-            <button
-              onClick={downloadReport}
-              style={{
-                background: "#142440",
-                color: "white",
-                border: "none",
-                borderRadius: 14,
-                padding: "15px 34px",
-                fontSize: 16,
-                cursor: "pointer",
-                fontWeight: "bold"
-              }}
-            >
+            <button onClick={downloadReport} style={{ background: "#142440", color: "white", border: "none", borderRadius: 14, padding: "15px 34px", fontSize: 16, cursor: "pointer", fontWeight: "bold" }}>
               Profesyonel PDF Raporu İndir
             </button>
 
-            <button
-              onClick={newTest}
-              style={{
-                marginLeft: 12,
-                background: "#E5E7EB",
-                color: "#111827",
-                border: "none",
-                borderRadius: 14,
-                padding: "15px 34px",
-                fontSize: 16,
-                cursor: "pointer"
-              }}
-            >
+            <button onClick={newTest} style={{ marginLeft: 12, background: "#E5E7EB", color: "#111827", border: "none", borderRadius: 14, padding: "15px 34px", fontSize: 16, cursor: "pointer" }}>
               Yeni Test Başlat
             </button>
           </div>
@@ -1143,37 +916,18 @@ export default function App() {
 
 function ScoreBox({ title, value, color }) {
   return (
-    <div
-      style={{
-        background: color,
-        color: "white",
-        padding: 18,
-        borderRadius: 16
-      }}
-    >
+    <div style={{ background: color, color: "white", padding: 18, borderRadius: 16 }}>
       <strong>{title}</strong>
-      <div style={{ fontSize: 30, fontWeight: "bold", marginTop: 6 }}>
-        {value}
-      </div>
+      <div style={{ fontSize: 30, fontWeight: "bold", marginTop: 6 }}>{value}</div>
     </div>
   );
 }
 
 function MetricBox({ title, value }) {
   return (
-    <div
-      style={{
-        background: "#F1F5F9",
-        color: "#0F172A",
-        padding: 16,
-        borderRadius: 16,
-        border: "1px solid #E2E8F0"
-      }}
-    >
+    <div style={{ background: "#F1F5F9", color: "#0F172A", padding: 16, borderRadius: 16, border: "1px solid #E2E8F0" }}>
       <strong>{title}</strong>
-      <div style={{ fontSize: 24, fontWeight: "bold", marginTop: 6 }}>
-        {value}
-      </div>
+      <div style={{ fontSize: 24, fontWeight: "bold", marginTop: 6 }}>{value}</div>
     </div>
   );
 }
