@@ -12,14 +12,7 @@ import {
   Tooltip
 } from "chart.js";
 
-ChartJS.register(
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Legend,
-  Tooltip
-);
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
 const SYMBOLS = ["●", "■", "▲", "◆", "★", "✚", "✦", "⬟", "⬢", "✹"];
 
@@ -39,36 +32,80 @@ const COLORS = [
 export default function App() {
   const [view, setView] = useState("START");
   const [scene, setScene] = useState(null);
-  const [targetSymbol, setTargetSymbol] = useState(null);
-  const [targetColor, setTargetColor] = useState("#142440");
+  const [target, setTarget] = useState(null);
 
+  const targetRef = useRef(null);
   const trialLog = useRef([]);
   const currentTrial = useRef(null);
   const counter = useRef(0);
   const timer = useRef(null);
   const chartRef = useRef(null);
+  const trialPlan = useRef([]);
 
   const TOTAL_TRIALS = 40;
+  const TARGET_COUNT = 16;
   const STIMULUS_DURATION = 1000;
   const GAP_DURATION = 500;
   const LATE_RESPONSE_MS = 800;
 
   const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+  const shuffleArray = (array) => {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
   const createNewTarget = () => {
-    setTargetSymbol(randomItem(SYMBOLS));
-    setTargetColor(randomItem(COLORS));
+    const newTarget = {
+      symbol: randomItem(SYMBOLS),
+      color: randomItem(COLORS)
+    };
+
+    targetRef.current = newTarget;
+    setTarget(newTarget);
   };
 
   useEffect(() => {
     createNewTarget();
   }, []);
 
+  const createTrialPlan = () => {
+    const targets = Array.from({ length: TARGET_COUNT }, () => true);
+    const nonTargets = Array.from(
+      { length: TOTAL_TRIALS - TARGET_COUNT },
+      () => false
+    );
+
+    trialPlan.current = shuffleArray([...targets, ...nonTargets]);
+  };
+
   const getSectionName = (trialNumber) => {
     if (trialNumber <= 10) return "Temel";
     if (trialNumber <= 20) return "Gorsel";
     if (trialNumber <= 30) return "Isitsel";
     return "Kombine";
+  };
+
+  const createNonTargetObject = () => {
+    const currentTarget = targetRef.current;
+
+    let obj;
+
+    do {
+      obj = {
+        symbol: randomItem(SYMBOLS),
+        color: randomItem(COLORS)
+      };
+    } while (
+      obj.symbol === currentTarget.symbol &&
+      obj.color === currentTarget.color
+    );
+
+    return obj;
   };
 
   useEffect(() => {
@@ -91,6 +128,7 @@ export default function App() {
     currentTrial.current = null;
     counter.current = 0;
     setScene(null);
+    createTrialPlan();
     setView("PLAY");
   };
 
@@ -118,11 +156,6 @@ export default function App() {
     }
   };
 
-  const getRandomNonTargetSymbol = (target) => {
-    const options = SYMBOLS.filter((s) => s !== target);
-    return randomItem(options);
-  };
-
   const nextTrial = () => {
     if (counter.current >= TOTAL_TRIALS) {
       currentTrial.current = null;
@@ -132,22 +165,23 @@ export default function App() {
     }
 
     const trialNumber = counter.current + 1;
-    const isTarget = Math.random() > 0.45;
+    const isTarget = trialPlan.current[counter.current];
+    const currentTarget = targetRef.current;
 
-    const shownSymbol = isTarget
-      ? targetSymbol
-      : getRandomNonTargetSymbol(targetSymbol);
+    const shownObject = isTarget
+      ? { ...currentTarget }
+      : createNonTargetObject();
 
-    const shownColor = randomItem(COLORS);
     const startTime = performance.now();
 
     currentTrial.current = {
       trialNumber,
       section: getSectionName(trialNumber),
       isTarget,
-      shownSymbol,
-      shownColor,
-      targetSymbol,
+      shownSymbol: shownObject.symbol,
+      shownColor: shownObject.color,
+      targetSymbol: currentTarget.symbol,
+      targetColor: currentTarget.color,
       startTime,
       responded: false,
       reactionTime: 0,
@@ -155,8 +189,8 @@ export default function App() {
     };
 
     setScene({
-      symbol: shownSymbol,
-      color: shownColor,
+      symbol: shownObject.symbol,
+      color: shownObject.color,
       isTarget
     });
 
@@ -173,6 +207,7 @@ export default function App() {
           shownSymbol: t.shownSymbol,
           shownColor: t.shownColor,
           targetSymbol: t.targetSymbol,
+          targetColor: t.targetColor,
           responded: t.responded,
           reactionTime: t.reactionTime || 0,
           responseCount: t.responses.length
@@ -188,14 +223,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (view === "PLAY" && targetSymbol) {
+    if (view === "PLAY" && targetRef.current) {
       nextTrial();
     }
 
     return () => {
       clearTimeout(timer.current);
     };
-  }, [view, targetSymbol]);
+  }, [view]);
 
   const getRawMetrics = () => {
     const logs = trialLog.current;
@@ -423,10 +458,12 @@ export default function App() {
   };
 
   const generateSmartComment = (scores, metrics) => {
+    const currentTarget = targetRef.current;
+
     const comments = [];
 
     comments.push(
-      `Test ${metrics.totalTrials} deneme uzerinden tamamlandi. Hedef simge ${targetSymbol} olarak belirlendi. Genel dogruluk orani %${metrics.accuracy}, ortalama tepki suresi ${metrics.avgReaction} ms olarak hesaplandi.`
+      `Test ${metrics.totalTrials} deneme uzerinden tamamlandi. Hedef nesne ${currentTarget.symbol} simgesi ve belirlenen hedef rengi ile sunuldu. Genel dogruluk orani %${metrics.accuracy}, ortalama tepki suresi ${metrics.avgReaction} ms olarak hesaplandi.`
     );
 
     if (scores.attention >= 6) {
@@ -497,6 +534,7 @@ export default function App() {
     const metrics = getRawMetrics();
     const comment = generateSmartComment(scores, metrics);
     const sections = getSectionSummary();
+    const currentTarget = targetRef.current;
 
     const doc = new jsPDF("p", "mm", "a4");
 
@@ -514,7 +552,7 @@ export default function App() {
 
     doc.setFontSize(10);
     doc.text("Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR"), 14, 45);
-    doc.text("Hedef Simge: " + targetSymbol, 14, 52);
+    doc.text("Hedef Nesne: " + currentTarget.symbol, 14, 52);
     doc.text("Test Tipi: 10 simgeli hedef / hedef disi uyaran gorevi", 14, 59);
     doc.text("Toplam Deneme: " + TOTAL_TRIALS, 14, 66);
 
@@ -640,7 +678,7 @@ export default function App() {
         padding: 24
       }}
     >
-      {view === "START" && (
+      {view === "START" && target && (
         <div
           style={{
             width: "100%",
@@ -655,8 +693,8 @@ export default function App() {
           <h1 style={{ marginTop: 0 }}>Dikkat Performans Testi</h1>
 
           <p style={{ fontSize: 17, color: "#475569" }}>
-            Asagidaki simge hedef olarak secildi. Test boyunca sadece bu simge
-            gorundugunde SPACE tusuna basin. Renkler dikkate alinmamalidir.
+            Aşağıdaki nesne hedef olarak seçildi. Test boyunca sadece bu
+            şekil ve bu renk birlikte göründüğünde SPACE tuşuna basın.
           </p>
 
           <div
@@ -673,8 +711,8 @@ export default function App() {
               boxShadow: "0 10px 30px rgba(15,23,42,0.12)"
             }}
           >
-            <div style={{ fontSize: 110, color: targetColor }}>
-              {targetSymbol}
+            <div style={{ fontSize: 110, color: target.color }}>
+              {target.symbol}
             </div>
           </div>
 
@@ -691,7 +729,7 @@ export default function App() {
               fontWeight: "bold"
             }}
           >
-            Teste Basla
+            Teste Başla
           </button>
         </div>
       )}
@@ -723,7 +761,7 @@ export default function App() {
         </div>
       )}
 
-      {view === "END" && (
+      {view === "END" && target && (
         <div
           style={{
             width: "100%",
@@ -734,9 +772,14 @@ export default function App() {
             boxShadow: "0 18px 50px rgba(15,23,42,0.12)"
           }}
         >
-          <h1 style={{ textAlign: "center", marginTop: 0 }}>Test Tamamlandi</h1>
+          <h1 style={{ textAlign: "center", marginTop: 0 }}>Test Tamamlandı</h1>
 
-          <h2 style={{ textAlign: "center" }}>Hedef Simge: {targetSymbol}</h2>
+          <h2 style={{ textAlign: "center" }}>
+            Hedef Nesne:{" "}
+            <span style={{ color: target.color, fontSize: 34 }}>
+              {target.symbol}
+            </span>
+          </h2>
 
           <div
             style={{
@@ -749,7 +792,7 @@ export default function App() {
           >
             <ScoreBox title="Dikkat" value={scores.attention} color={getScoreColor(scores.attention)} />
             <ScoreBox title="Zamanlama" value={scores.timing} color={getScoreColor(scores.timing)} />
-            <ScoreBox title="Durtusellik" value={scores.impulsivity} color={getScoreColor(scores.impulsivity)} />
+            <ScoreBox title="Dürtüsellik" value={scores.impulsivity} color={getScoreColor(scores.impulsivity)} />
             <ScoreBox title="Hiperaktivite" value={scores.hyperactivity} color={getScoreColor(scores.hyperactivity)} />
           </div>
 
@@ -761,13 +804,13 @@ export default function App() {
               marginBottom: 28
             }}
           >
-            <MetricBox title="Dogruluk" value={`%${metrics.accuracy}`} />
+            <MetricBox title="Doğruluk" value={`%${metrics.accuracy}`} />
             <MetricBox title="Ort. Tepki" value={`${metrics.avgReaction} ms`} />
-            <MetricBox title="Dogru Hedef" value={metrics.correctHits} />
-            <MetricBox title="Yanlis Yanit" value={metrics.impulsiveErrors} />
+            <MetricBox title="Doğru Hedef" value={metrics.correctHits} />
+            <MetricBox title="Yanlış Yanıt" value={metrics.impulsiveErrors} />
           </div>
 
-          <h3>Performans Grafigi</h3>
+          <h3>Performans Grafiği</h3>
 
           <div style={{ width: "100%", height: 370 }}>
             <Line
@@ -796,7 +839,7 @@ export default function App() {
                 fontWeight: "bold"
               }}
             >
-              Profesyonel PDF Raporu Indir
+              Profesyonel PDF Raporu İndir
             </button>
 
             <button
@@ -812,7 +855,7 @@ export default function App() {
                 cursor: "pointer"
               }}
             >
-              Yeni Test Baslat
+              Yeni Test Başlat
             </button>
           </div>
         </div>
