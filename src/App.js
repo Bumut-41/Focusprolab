@@ -23,10 +23,24 @@ ChartJS.register(
 
 const SYMBOLS = ["●", "■", "▲", "◆", "★", "✚", "✦", "⬟", "⬢", "✹"];
 
+const COLORS = [
+  "#2563EB",
+  "#16A34A",
+  "#DC2626",
+  "#F59E0B",
+  "#7C3AED",
+  "#0891B2",
+  "#DB2777",
+  "#65A30D",
+  "#EA580C",
+  "#0F172A"
+];
+
 export default function App() {
   const [view, setView] = useState("START");
   const [scene, setScene] = useState(null);
   const [targetSymbol, setTargetSymbol] = useState(null);
+  const [targetColor, setTargetColor] = useState("#142440");
 
   const trialLog = useRef([]);
   const currentTrial = useRef(null);
@@ -39,6 +53,13 @@ export default function App() {
   const GAP_DURATION = 500;
   const LATE_RESPONSE_MS = 800;
 
+  const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  const createNewTarget = () => {
+    setTargetSymbol(randomItem(SYMBOLS));
+    setTargetColor(randomItem(COLORS));
+  };
+
   const getSectionName = (trialNumber) => {
     if (trialNumber <= 10) return "Temel";
     if (trialNumber <= 20) return "Gorsel";
@@ -47,8 +68,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    const randomTarget = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
-    setTargetSymbol(randomTarget);
+    createNewTarget();
   }, []);
 
   useEffect(() => {
@@ -67,9 +87,12 @@ export default function App() {
   }, []);
 
   const startTest = () => {
-    const newTarget = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+    const newTarget = randomItem(SYMBOLS);
+    const newTargetColor = randomItem(COLORS);
 
     setTargetSymbol(newTarget);
+    setTargetColor(newTargetColor);
+
     trialLog.current = [];
     currentTrial.current = null;
     counter.current = 0;
@@ -93,7 +116,7 @@ export default function App() {
 
   const getRandomNonTargetSymbol = (target) => {
     const options = SYMBOLS.filter((s) => s !== target);
-    return options[Math.floor(Math.random() * options.length)];
+    return randomItem(options);
   };
 
   const nextTrial = () => {
@@ -106,10 +129,12 @@ export default function App() {
 
     const trialNumber = counter.current + 1;
     const isTarget = Math.random() > 0.45;
+
     const shownSymbol = isTarget
       ? targetSymbol
       : getRandomNonTargetSymbol(targetSymbol);
 
+    const shownColor = randomItem(COLORS);
     const startTime = performance.now();
 
     currentTrial.current = {
@@ -117,6 +142,7 @@ export default function App() {
       section: getSectionName(trialNumber),
       isTarget,
       shownSymbol,
+      shownColor,
       targetSymbol,
       startTime,
       responded: false,
@@ -126,6 +152,7 @@ export default function App() {
 
     setScene({
       symbol: shownSymbol,
+      color: shownColor,
       isTarget
     });
 
@@ -140,6 +167,7 @@ export default function App() {
           section: t.section,
           isTarget: t.isTarget,
           shownSymbol: t.shownSymbol,
+          shownColor: t.shownColor,
           targetSymbol: t.targetSymbol,
           responded: t.responded,
           reactionTime: t.reactionTime || 0,
@@ -173,9 +201,11 @@ export default function App() {
 
     const correctHits = targets.filter((t) => t.responded);
     const omissions = targets.filter((t) => !t.responded);
+
     const lateResponses = targets.filter(
       (t) => t.responded && t.reactionTime > LATE_RESPONSE_MS
     );
+
     const impulsiveErrors = nonTargets.filter((t) => t.responded);
     const multiPress = logs.filter((t) => t.responseCount > 1);
 
@@ -190,7 +220,8 @@ export default function App() {
     const accuracy =
       logs.length > 0
         ? Math.round(
-            ((correctHits.length + nonTargets.filter((t) => !t.responded).length) /
+            ((correctHits.length +
+              nonTargets.filter((t) => !t.responded).length) /
               logs.length) *
               100
           )
@@ -609,7 +640,7 @@ export default function App() {
         <div
           style={{
             width: "100%",
-            maxWidth: 900,
+            maxWidth: 760,
             background: "white",
             borderRadius: 24,
             padding: 36,
@@ -620,41 +651,27 @@ export default function App() {
           <h1 style={{ marginTop: 0 }}>Dikkat Performans Testi</h1>
 
           <p style={{ fontSize: 17, color: "#475569" }}>
-            Asagidaki 10 simgeden biri hedef olarak secilecek. Test boyunca
-            sadece hedef simge gorundugunde SPACE tusuna basin.
+            Asagidaki simge hedef olarak secildi. Test boyunca sadece bu simge
+            gorundugunde SPACE tusuna basin. Renkler dikkate alinmamalidir.
           </p>
-
-          <h2>Simge Listesi</h2>
 
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5, 1fr)",
-              gap: 14,
-              marginTop: 24,
-              marginBottom: 28
+              margin: "30px auto",
+              width: 190,
+              height: 190,
+              borderRadius: 28,
+              border: "3px solid #142440",
+              background: "#F8FAFC",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 10px 30px rgba(15,23,42,0.12)"
             }}
           >
-            {SYMBOLS.map((symbol) => (
-              <div
-                key={symbol}
-                style={{
-                  border:
-                    symbol === targetSymbol
-                      ? "3px solid #142440"
-                      : "1px solid #CBD5E1",
-                  borderRadius: 18,
-                  padding: 18,
-                  background:
-                    symbol === targetSymbol ? "#EFF6FF" : "#F8FAFC"
-                }}
-              >
-                <div style={{ fontSize: 54 }}>{symbol}</div>
-                {symbol === targetSymbol && (
-                  <strong style={{ color: "#142440" }}>HEDEF</strong>
-                )}
-              </div>
-            ))}
+            <div style={{ fontSize: 110, color: targetColor }}>
+              {targetSymbol}
+            </div>
           </div>
 
           <button
@@ -686,47 +703,19 @@ export default function App() {
             boxShadow: "0 18px 50px rgba(15,23,42,0.12)",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            position: "relative"
+            justifyContent: "center"
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              top: 22,
-              left: 24,
-              color: "#475569",
-              fontWeight: "bold"
-            }}
-          >
-            Deneme: {Math.min(counter.current + 1, TOTAL_TRIALS)} /{" "}
-            {TOTAL_TRIALS}
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              top: 22,
-              right: 24,
-              color: "#475569",
-              fontWeight: "bold"
-            }}
-          >
-            Hedef: {targetSymbol}
-          </div>
-
           {scene && (
             <div
               style={{
-                fontSize: 140,
-                color: scene.isTarget ? "#16A34A" : "#0F172A"
+                fontSize: 150,
+                color: scene.color
               }}
             >
               {scene.symbol}
             </div>
           )}
-
-          {!scene && <div style={{ fontSize: 28, color: "#94A3B8" }}>+</div>}
         </div>
       )}
 
