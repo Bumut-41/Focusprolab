@@ -21,9 +21,12 @@ ChartJS.register(
   Tooltip
 );
 
+const SYMBOLS = ["●", "■", "▲", "◆", "★", "✚", "✦", "⬟", "⬢", "✹"];
+
 export default function App() {
   const [view, setView] = useState("START");
   const [scene, setScene] = useState(null);
+  const [targetSymbol, setTargetSymbol] = useState(null);
 
   const trialLog = useRef([]);
   const currentTrial = useRef(null);
@@ -31,17 +34,22 @@ export default function App() {
   const timer = useRef(null);
   const chartRef = useRef(null);
 
-  const TOTAL_TRIALS = 32;
+  const TOTAL_TRIALS = 40;
   const STIMULUS_DURATION = 1000;
   const GAP_DURATION = 500;
   const LATE_RESPONSE_MS = 800;
 
   const getSectionName = (trialNumber) => {
-    if (trialNumber <= 8) return "Temel";
-    if (trialNumber <= 16) return "Gorsel";
-    if (trialNumber <= 24) return "Isitsel";
+    if (trialNumber <= 10) return "Temel";
+    if (trialNumber <= 20) return "Gorsel";
+    if (trialNumber <= 30) return "Isitsel";
     return "Kombine";
   };
+
+  useEffect(() => {
+    const randomTarget = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+    setTargetSymbol(randomTarget);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -59,6 +67,9 @@ export default function App() {
   }, []);
 
   const startTest = () => {
+    const newTarget = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+
+    setTargetSymbol(newTarget);
     trialLog.current = [];
     currentTrial.current = null;
     counter.current = 0;
@@ -80,6 +91,11 @@ export default function App() {
     }
   };
 
+  const getRandomNonTargetSymbol = (target) => {
+    const options = SYMBOLS.filter((s) => s !== target);
+    return options[Math.floor(Math.random() * options.length)];
+  };
+
   const nextTrial = () => {
     if (counter.current >= TOTAL_TRIALS) {
       currentTrial.current = null;
@@ -89,20 +105,29 @@ export default function App() {
     }
 
     const trialNumber = counter.current + 1;
-    const isTarget = Math.random() > 0.35;
+    const isTarget = Math.random() > 0.45;
+    const shownSymbol = isTarget
+      ? targetSymbol
+      : getRandomNonTargetSymbol(targetSymbol);
+
     const startTime = performance.now();
 
     currentTrial.current = {
       trialNumber,
       section: getSectionName(trialNumber),
       isTarget,
+      shownSymbol,
+      targetSymbol,
       startTime,
       responded: false,
       reactionTime: 0,
       responses: []
     };
 
-    setScene(isTarget ? "TARGET" : "OTHER");
+    setScene({
+      symbol: shownSymbol,
+      isTarget
+    });
 
     timer.current = setTimeout(() => {
       setScene(null);
@@ -114,6 +139,8 @@ export default function App() {
           trialNumber: t.trialNumber,
           section: t.section,
           isTarget: t.isTarget,
+          shownSymbol: t.shownSymbol,
+          targetSymbol: t.targetSymbol,
           responded: t.responded,
           reactionTime: t.reactionTime || 0,
           responseCount: t.responses.length
@@ -129,14 +156,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (view === "PLAY") {
+    if (view === "PLAY" && targetSymbol) {
       nextTrial();
     }
 
     return () => {
       clearTimeout(timer.current);
     };
-  }, [view]);
+  }, [view, targetSymbol]);
 
   const getRawMetrics = () => {
     const logs = trialLog.current;
@@ -364,7 +391,7 @@ export default function App() {
     const comments = [];
 
     comments.push(
-      `Test ${metrics.totalTrials} deneme uzerinden tamamlandi. Genel dogruluk orani %${metrics.accuracy}, ortalama tepki suresi ${metrics.avgReaction} ms olarak hesaplandi.`
+      `Test ${metrics.totalTrials} deneme uzerinden tamamlandi. Hedef simge ${targetSymbol} olarak belirlendi. Genel dogruluk orani %${metrics.accuracy}, ortalama tepki suresi ${metrics.avgReaction} ms olarak hesaplandi.`
     );
 
     if (scores.attention >= 6) {
@@ -411,18 +438,6 @@ export default function App() {
       comments.push("Motor yanit kontrolu genel olarak duzenlidir.");
     }
 
-    if (scores.attention >= 3 && scores.timing >= 3) {
-      comments.push(
-        "Dikkat ve zamanlama alanlari birlikte etkilendigi icin odaklanma ve islem hizi birlikte degerlendirilmelidir."
-      );
-    }
-
-    if (scores.impulsivity >= 3 && scores.hyperactivity >= 3) {
-      comments.push(
-        "Durtusellik ve hiperaktivite birlikte yukselirse davranissal kontrol alaninin ayrica incelenmesi onerilir."
-      );
-    }
-
     return comments.join(" ");
   };
 
@@ -464,16 +479,17 @@ export default function App() {
 
     doc.setFontSize(10);
     doc.text("Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR"), 14, 45);
-    doc.text("Test Tipi: Gorsel hedef / hedef disi uyaran gorevi", 14, 52);
-    doc.text("Toplam Deneme: " + TOTAL_TRIALS, 14, 59);
+    doc.text("Hedef Simge: " + targetSymbol, 14, 52);
+    doc.text("Test Tipi: 10 simgeli hedef / hedef disi uyaran gorevi", 14, 59);
+    doc.text("Toplam Deneme: " + TOTAL_TRIALS, 14, 66);
 
-    drawPdfCard(doc, "Dikkat", scores.attention, 14, 72);
-    drawPdfCard(doc, "Zamanlama", scores.timing, 60, 72);
-    drawPdfCard(doc, "Durtusellik", scores.impulsivity, 106, 72);
-    drawPdfCard(doc, "Hiperaktivite", scores.hyperactivity, 152, 72);
+    drawPdfCard(doc, "Dikkat", scores.attention, 14, 78);
+    drawPdfCard(doc, "Zamanlama", scores.timing, 60, 78);
+    drawPdfCard(doc, "Durtusellik", scores.impulsivity, 106, 78);
+    drawPdfCard(doc, "Hiperaktivite", scores.hyperactivity, 152, 78);
 
     autoTable(doc, {
-      startY: 110,
+      startY: 116,
       head: [["Indeks", "Hata Skoru", "Seviye", "Yorum"]],
       body: [
         ["A - Dikkat", scores.attention, getLevel(scores.attention), getLevelText(scores.attention)],
@@ -520,24 +536,19 @@ export default function App() {
     const chart = chartRef.current;
     const chartImage = chart?.canvas?.toDataURL("image/png", 1.0);
 
+    doc.addPage();
+
+    doc.setFillColor(20, 36, 64);
+    doc.rect(0, 0, 210, 24, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(15);
+    doc.text("Performans Grafigi", 14, 15);
+
+    doc.setTextColor(0, 0, 0);
+
     if (chartImage) {
-      doc.addPage();
-
-      doc.setFillColor(20, 36, 64);
-      doc.rect(0, 0, 210, 24, "F");
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(15);
-      doc.text("Performans Grafigi", 14, 15);
-
-      doc.setTextColor(0, 0, 0);
       doc.addImage(chartImage, "PNG", 12, 34, 186, 95);
-    } else {
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.text("Performans Grafigi", 14, 20);
-      doc.setFontSize(10);
-      doc.text("Grafik goruntusu rapora eklenemedi.", 14, 30);
     }
 
     autoTable(doc, {
@@ -598,7 +609,7 @@ export default function App() {
         <div
           style={{
             width: "100%",
-            maxWidth: 780,
+            maxWidth: 900,
             background: "white",
             borderRadius: 24,
             padding: 36,
@@ -609,45 +620,41 @@ export default function App() {
           <h1 style={{ marginTop: 0 }}>Dikkat Performans Testi</h1>
 
           <p style={{ fontSize: 17, color: "#475569" }}>
-            Ekranda hedef ve hedef olmayan uyaranlar belirecek. Hedefi gordugunuzde
-            sadece SPACE tusuna basin.
+            Asagidaki 10 simgeden biri hedef olarak secilecek. Test boyunca
+            sadece hedef simge gorundugunde SPACE tusuna basin.
           </p>
+
+          <h2>Simge Listesi</h2>
 
           <div
             style={{
-              display: "flex",
-              gap: 20,
-              justifyContent: "center",
-              marginTop: 28,
-              marginBottom: 28,
-              flexWrap: "wrap"
+              display: "grid",
+              gridTemplateColumns: "repeat(5, 1fr)",
+              gap: 14,
+              marginTop: 24,
+              marginBottom: 28
             }}
           >
-            <div
-              style={{
-                padding: 22,
-                border: "2px solid #16A34A",
-                borderRadius: 18,
-                width: 210
-              }}
-            >
-              <div style={{ fontSize: 72, color: "#16A34A" }}>●</div>
-              <strong>Hedef Uyaran</strong>
-              <p>Yesil daire gorunce SPACE tusuna bas.</p>
-            </div>
-
-            <div
-              style={{
-                padding: 22,
-                border: "2px solid #DC2626",
-                borderRadius: 18,
-                width: 210
-              }}
-            >
-              <div style={{ fontSize: 72, color: "#DC2626" }}>■</div>
-              <strong>Hedef Degil</strong>
-              <p>Kirmizi kare gorunce basma.</p>
-            </div>
+            {SYMBOLS.map((symbol) => (
+              <div
+                key={symbol}
+                style={{
+                  border:
+                    symbol === targetSymbol
+                      ? "3px solid #142440"
+                      : "1px solid #CBD5E1",
+                  borderRadius: 18,
+                  padding: 18,
+                  background:
+                    symbol === targetSymbol ? "#EFF6FF" : "#F8FAFC"
+                }}
+              >
+                <div style={{ fontSize: 54 }}>{symbol}</div>
+                {symbol === targetSymbol && (
+                  <strong style={{ color: "#142440" }}>HEDEF</strong>
+                )}
+              </div>
+            ))}
           </div>
 
           <button
@@ -701,18 +708,22 @@ export default function App() {
               position: "absolute",
               top: 22,
               right: 24,
-              color: "#475569"
+              color: "#475569",
+              fontWeight: "bold"
             }}
           >
-            Bolum: {getSectionName(counter.current + 1)}
+            Hedef: {targetSymbol}
           </div>
 
-          {scene === "TARGET" && (
-            <div style={{ fontSize: 130, color: "#16A34A" }}>●</div>
-          )}
-
-          {scene === "OTHER" && (
-            <div style={{ fontSize: 130, color: "#DC2626" }}>■</div>
+          {scene && (
+            <div
+              style={{
+                fontSize: 140,
+                color: scene.isTarget ? "#16A34A" : "#0F172A"
+              }}
+            >
+              {scene.symbol}
+            </div>
           )}
 
           {!scene && <div style={{ fontSize: 28, color: "#94A3B8" }}>+</div>}
@@ -731,6 +742,8 @@ export default function App() {
           }}
         >
           <h1 style={{ textAlign: "center", marginTop: 0 }}>Test Tamamlandi</h1>
+
+          <h2 style={{ textAlign: "center" }}>Hedef Simge: {targetSymbol}</h2>
 
           <div
             style={{
