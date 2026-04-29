@@ -78,8 +78,13 @@ function ShapeView({ shape, color, size = 120 }) {
     display: "inline-block"
   };
 
-  if (shape === "circle") return <div style={{ ...base, borderRadius: "50%" }} />;
-  if (shape === "square") return <div style={base} />;
+  if (shape === "circle") {
+    return <div style={{ ...base, borderRadius: "50%" }} />;
+  }
+
+  if (shape === "square") {
+    return <div style={base} />;
+  }
 
   if (shape === "triangle") {
     return (
@@ -108,7 +113,8 @@ function ShapeView({ shape, color, size = 120 }) {
       <div
         style={{
           ...base,
-          clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)"
+          clipPath:
+            "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)"
         }}
       />
     );
@@ -154,18 +160,70 @@ function ShapeView({ shape, color, size = 120 }) {
 
   if (shape === "plus") {
     return (
-      <div style={{ width: size, height: size, position: "relative", display: "inline-block" }}>
-        <div style={{ position: "absolute", left: size * 0.4, top: 0, width: size * 0.2, height: size, background: color }} />
-        <div style={{ position: "absolute", left: 0, top: size * 0.4, width: size, height: size * 0.2, background: color }} />
+      <div
+        style={{
+          width: size,
+          height: size,
+          position: "relative",
+          display: "inline-block"
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: size * 0.4,
+            top: 0,
+            width: size * 0.2,
+            height: size,
+            background: color
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: size * 0.4,
+            width: size,
+            height: size * 0.2,
+            background: color
+          }}
+        />
       </div>
     );
   }
 
   if (shape === "xshape") {
     return (
-      <div style={{ width: size, height: size, position: "relative", display: "inline-block" }}>
-        <div style={{ position: "absolute", left: size * 0.43, top: 0, width: size * 0.14, height: size, background: color, transform: "rotate(45deg)" }} />
-        <div style={{ position: "absolute", left: size * 0.43, top: 0, width: size * 0.14, height: size, background: color, transform: "rotate(-45deg)" }} />
+      <div
+        style={{
+          width: size,
+          height: size,
+          position: "relative",
+          display: "inline-block"
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: size * 0.43,
+            top: 0,
+            width: size * 0.14,
+            height: size,
+            background: color,
+            transform: "rotate(45deg)"
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: size * 0.43,
+            top: 0,
+            width: size * 0.14,
+            height: size,
+            background: color,
+            transform: "rotate(-45deg)"
+          }}
+        />
       </div>
     );
   }
@@ -217,6 +275,7 @@ export default function App() {
   const [view, setView] = useState("START");
   const [scene, setScene] = useState(null);
   const [target, setTarget] = useState(null);
+  const [distractors, setDistractors] = useState([]);
 
   const targetRef = useRef(null);
   const trialLog = useRef([]);
@@ -225,6 +284,7 @@ export default function App() {
   const timer = useRef(null);
   const chartRef = useRef(null);
   const trialPlan = useRef([]);
+  const lastInputTime = useRef(0);
 
   const createNewTarget = () => {
     const newTarget = {
@@ -236,6 +296,26 @@ export default function App() {
     setTarget(newTarget);
   };
 
+  const createDistractors = () => {
+    const items = Array.from({ length: 8 }).map((_, index) => {
+      const side = Math.random() > 0.5 ? "left" : "right";
+
+      return {
+        id: index,
+        shape: randomItem(SHAPES).id,
+        color: randomItem(COLORS),
+        size: 22 + Math.floor(Math.random() * 22),
+        left:
+          side === "left"
+            ? 8 + Math.random() * 18
+            : 74 + Math.random() * 18,
+        top: 12 + Math.random() * 76
+      };
+    });
+
+    setDistractors(items);
+  };
+
   useEffect(() => {
     createNewTarget();
   }, []);
@@ -244,7 +324,7 @@ export default function App() {
     const handleKeyDown = (event) => {
       if (event.code === "Space") {
         event.preventDefault();
-        handleResponse();
+        registerResponse();
       }
     };
 
@@ -252,9 +332,39 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (view !== "PLAY") return;
+
+    createDistractors();
+
+    const interval = setInterval(() => {
+      setDistractors((prev) =>
+        prev.map((item) => ({
+          ...item,
+          color: randomItem(COLORS)
+        }))
+      );
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [view]);
+
+  const registerResponse = () => {
+    const now = performance.now();
+
+    if (now - lastInputTime.current < 120) return;
+
+    lastInputTime.current = now;
+    handleResponse();
+  };
+
   const createTrialPlan = () => {
     const targets = Array.from({ length: TARGET_COUNT }, () => true);
-    const nonTargets = Array.from({ length: TOTAL_TRIALS - TARGET_COUNT }, () => false);
+    const nonTargets = Array.from(
+      { length: TOTAL_TRIALS - TARGET_COUNT },
+      () => false
+    );
+
     trialPlan.current = shuffleArray([...targets, ...nonTargets]);
   };
 
@@ -286,8 +396,10 @@ export default function App() {
     trialLog.current = [];
     currentTrial.current = null;
     counter.current = 0;
+    lastInputTime.current = 0;
     setScene(null);
     createTrialPlan();
+    createDistractors();
     setView("PLAY");
   };
 
@@ -296,7 +408,9 @@ export default function App() {
     trialLog.current = [];
     currentTrial.current = null;
     counter.current = 0;
+    lastInputTime.current = 0;
     setScene(null);
+    setDistractors([]);
     createNewTarget();
     setView("START");
   };
@@ -305,6 +419,7 @@ export default function App() {
     if (!currentTrial.current) return;
 
     const now = performance.now();
+
     currentTrial.current.responses.push(now);
 
     if (!currentTrial.current.responded) {
@@ -318,6 +433,7 @@ export default function App() {
     if (counter.current >= TOTAL_TRIALS) {
       currentTrial.current = null;
       setScene(null);
+      setDistractors([]);
       setView("END");
       return;
     }
@@ -367,6 +483,7 @@ export default function App() {
         });
       }
 
+      currentTrial.current = null;
       counter.current += 1;
       timer.current = setTimeout(nextTrial, GAP_DURATION);
     }, STIMULUS_DURATION);
@@ -598,9 +715,7 @@ export default function App() {
     if (scores.timing >= 6) {
       comments.push("Zamanlama alanında belirgin gecikme vardır.");
     } else if (scores.timing >= 3) {
-      comments.push(
-        "Zamanlama performansında hafif-orta düzeyde gecikmeler görülmüştür."
-      );
+      comments.push("Zamanlama performansında hafif-orta düzeyde gecikmeler görülmüştür.");
     } else {
       comments.push("Zamanlama becerisi genel olarak yeterli görünmektedir.");
     }
@@ -693,16 +808,36 @@ export default function App() {
             {
               width: "*",
               stack: [
-                { text: "Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR") },
-                { text: "Test Tipi: 10 nesneli hedef / hedef dışı uyaran görevi", margin: [0, 6, 0, 0] },
-                { text: "Toplam Deneme: " + TOTAL_TRIALS, margin: [0, 6, 0, 0] }
+                {
+                  text:
+                    "Rapor Tarihi: " +
+                    new Date().toLocaleDateString("tr-TR")
+                },
+                {
+                  text:
+                    "Test Tipi: 10 nesneli hedef / hedef dışı uyaran görevi",
+                  margin: [0, 6, 0, 0]
+                },
+                {
+                  text: "Toplam Deneme: " + TOTAL_TRIALS,
+                  margin: [0, 6, 0, 0]
+                }
               ]
             },
             {
               width: 110,
               stack: [
-                { text: "Hedef Nesne", bold: true, alignment: "center" },
-                { svg: getShapeSvg(currentTarget.shape, currentTarget.color), width: 45, alignment: "center", margin: [0, 6, 0, 0] }
+                {
+                  text: "Hedef Nesne",
+                  bold: true,
+                  alignment: "center"
+                },
+                {
+                  svg: getShapeSvg(currentTarget.shape, currentTarget.color),
+                  width: 45,
+                  alignment: "center",
+                  margin: [0, 6, 0, 0]
+                }
               ]
             }
           ],
@@ -717,8 +852,19 @@ export default function App() {
                 [
                   {
                     stack: [
-                      { text: title, color: "white", bold: true, fontSize: 11 },
-                      { text: String(value), color: "white", bold: true, fontSize: 22, margin: [0, 8, 0, 0] }
+                      {
+                        text: title,
+                        color: "white",
+                        bold: true,
+                        fontSize: 11
+                      },
+                      {
+                        text: String(value),
+                        color: "white",
+                        bold: true,
+                        fontSize: 22,
+                        margin: [0, 8, 0, 0]
+                      }
                     ],
                     fillColor: getScoreColor(value),
                     margin: [10, 10, 10, 10]
@@ -743,14 +889,39 @@ export default function App() {
                 { text: "Seviye", bold: true, color: "white" },
                 { text: "Yorum", bold: true, color: "white" }
               ],
-              ["A - Dikkat", scores.attention, getLevel(scores.attention), getLevelText(scores.attention)],
-              ["T - Zamanlama", scores.timing, getLevel(scores.timing), getLevelText(scores.timing)],
-              ["I - Dürtüsellik", scores.impulsivity, getLevel(scores.impulsivity), getLevelText(scores.impulsivity)],
-              ["H - Hiperaktivite", scores.hyperactivity, getLevel(scores.hyperactivity), getLevelText(scores.hyperactivity)]
+              [
+                "A - Dikkat",
+                scores.attention,
+                getLevel(scores.attention),
+                getLevelText(scores.attention)
+              ],
+              [
+                "T - Zamanlama",
+                scores.timing,
+                getLevel(scores.timing),
+                getLevelText(scores.timing)
+              ],
+              [
+                "I - Dürtüsellik",
+                scores.impulsivity,
+                getLevel(scores.impulsivity),
+                getLevelText(scores.impulsivity)
+              ],
+              [
+                "H - Hiperaktivite",
+                scores.hyperactivity,
+                getLevel(scores.hyperactivity),
+                getLevelText(scores.hyperactivity)
+              ]
             ]
           },
           layout: {
-            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) =>
+              rowIndex === 0
+                ? "#142440"
+                : rowIndex % 2 === 0
+                ? "#F8FAFC"
+                : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           },
@@ -777,7 +948,12 @@ export default function App() {
             ]
           },
           layout: {
-            fillColor: (rowIndex) => rowIndex === 0 ? "#374151" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) =>
+              rowIndex === 0
+                ? "#374151"
+                : rowIndex % 2 === 0
+                ? "#F8FAFC"
+                : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           }
@@ -788,8 +964,15 @@ export default function App() {
           pageBreak: "before"
         },
         chartImage
-          ? { image: chartImage, width: 520, margin: [0, 0, 0, 20] }
-          : { text: "Grafik görüntüsü alınamadı.", margin: [0, 0, 0, 20] },
+          ? {
+              image: chartImage,
+              width: 520,
+              margin: [0, 0, 0, 20]
+            }
+          : {
+              text: "Grafik görüntüsü alınamadı.",
+              margin: [0, 0, 0, 20]
+            },
         {
           table: {
             headerRows: 1,
@@ -812,7 +995,12 @@ export default function App() {
             ]
           },
           layout: {
-            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) =>
+              rowIndex === 0
+                ? "#142440"
+                : rowIndex % 2 === 0
+                ? "#F8FAFC"
+                : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           },
@@ -830,14 +1018,17 @@ export default function App() {
           margin: [0, 0, 0, 40]
         },
         {
-          text: "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
+          text:
+            "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
           fontSize: 8,
           color: "#64748B"
         }
       ]
     };
 
-    pdfMake.createPdf(docDefinition).download("dikkat-performans-raporu.pdf");
+    pdfMake
+      .createPdf(docDefinition)
+      .download("dikkat-performans-raporu.pdf");
   };
 
   const scores = calculateScores();
@@ -871,7 +1062,9 @@ export default function App() {
 
           <p style={{ fontSize: 17, color: "#475569" }}>
             Aşağıdaki nesne hedef olarak seçildi. Test boyunca sadece bu şekil
-            ve bu renk birlikte göründüğünde SPACE tuşuna basın.
+            ve bu renk birlikte göründüğünde SPACE tuşuna basın. Mouse ile
+            tıklama ve dokunmatik ekranlarda dokunma da cevap olarak kabul
+            edilir.
           </p>
 
           <div
@@ -911,6 +1104,8 @@ export default function App() {
 
       {view === "PLAY" && (
         <div
+          onClick={registerResponse}
+          onTouchStart={registerResponse}
           style={{
             width: "100%",
             maxWidth: 760,
@@ -920,10 +1115,43 @@ export default function App() {
             boxShadow: "0 18px 50px rgba(15,23,42,0.12)",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center"
+            justifyContent: "center",
+            position: "relative",
+            overflow: "hidden",
+            cursor: "pointer",
+            touchAction: "manipulation",
+            userSelect: "none"
           }}
         >
-          {scene && <ShapeView shape={scene.shape} color={scene.color} size={150} />}
+          {distractors.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                position: "absolute",
+                left: `${item.left}%`,
+                top: `${item.top}%`,
+                transform: "translate(-50%, -50%)",
+                opacity: 0.55,
+                pointerEvents: "none"
+              }}
+            >
+              <ShapeView
+                shape={item.shape}
+                color={item.color}
+                size={item.size}
+              />
+            </div>
+          ))}
+
+          {scene && (
+            <div style={{ zIndex: 2 }}>
+              <ShapeView
+                shape={scene.shape}
+                color={scene.color}
+                size={150}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -943,7 +1171,11 @@ export default function App() {
           <div style={{ textAlign: "center", marginBottom: 20 }}>
             <strong>Hedef Nesne:</strong>
             <div style={{ marginTop: 12 }}>
-              <ShapeView shape={target.shape} color={target.color} size={60} />
+              <ShapeView
+                shape={target.shape}
+                color={target.color}
+                size={60}
+              />
             </div>
           </div>
 
@@ -956,10 +1188,26 @@ export default function App() {
               marginBottom: 22
             }}
           >
-            <ScoreBox title="Dikkat" value={scores.attention} color={getScoreColor(scores.attention)} />
-            <ScoreBox title="Zamanlama" value={scores.timing} color={getScoreColor(scores.timing)} />
-            <ScoreBox title="Dürtüsellik" value={scores.impulsivity} color={getScoreColor(scores.impulsivity)} />
-            <ScoreBox title="Hiperaktivite" value={scores.hyperactivity} color={getScoreColor(scores.hyperactivity)} />
+            <ScoreBox
+              title="Dikkat"
+              value={scores.attention}
+              color={getScoreColor(scores.attention)}
+            />
+            <ScoreBox
+              title="Zamanlama"
+              value={scores.timing}
+              color={getScoreColor(scores.timing)}
+            />
+            <ScoreBox
+              title="Dürtüsellik"
+              value={scores.impulsivity}
+              color={getScoreColor(scores.impulsivity)}
+            />
+            <ScoreBox
+              title="Hiperaktivite"
+              value={scores.hyperactivity}
+              color={getScoreColor(scores.hyperactivity)}
+            />
           </div>
 
           <div
@@ -979,11 +1227,17 @@ export default function App() {
           <h3>Performans Grafiği</h3>
 
           <div style={{ width: "100%", height: 370 }}>
-            <Line ref={chartRef} data={buildChartData()} options={buildChartOptions()} />
+            <Line
+              ref={chartRef}
+              data={buildChartData()}
+              options={buildChartOptions()}
+            />
           </div>
 
           <h3>Otomatik Yorum</h3>
-          <p style={{ lineHeight: 1.6 }}>{generateSmartComment(scores, metrics)}</p>
+          <p style={{ lineHeight: 1.6 }}>
+            {generateSmartComment(scores, metrics)}
+          </p>
 
           <div style={{ textAlign: "center", marginTop: 26 }}>
             <button
