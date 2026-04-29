@@ -60,16 +60,16 @@ export default function App() {
     setTargetColor(randomItem(COLORS));
   };
 
+  useEffect(() => {
+    createNewTarget();
+  }, []);
+
   const getSectionName = (trialNumber) => {
     if (trialNumber <= 10) return "Temel";
     if (trialNumber <= 20) return "Gorsel";
     if (trialNumber <= 30) return "Isitsel";
     return "Kombine";
   };
-
-  useEffect(() => {
-    createNewTarget();
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -87,17 +87,21 @@ export default function App() {
   }, []);
 
   const startTest = () => {
-    const newTarget = randomItem(SYMBOLS);
-    const newTargetColor = randomItem(COLORS);
-
-    setTargetSymbol(newTarget);
-    setTargetColor(newTargetColor);
-
     trialLog.current = [];
     currentTrial.current = null;
     counter.current = 0;
     setScene(null);
     setView("PLAY");
+  };
+
+  const newTest = () => {
+    clearTimeout(timer.current);
+    trialLog.current = [];
+    currentTrial.current = null;
+    counter.current = 0;
+    setScene(null);
+    createNewTarget();
+    setView("START");
   };
 
   const handleResponse = () => {
@@ -796,7 +800,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={startTest}
+              onClick={newTest}
               style={{
                 marginLeft: 12,
                 background: "#E5E7EB",
