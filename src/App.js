@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -28,16 +27,8 @@ const SHAPES = [
 ];
 
 const COLORS = [
-  "#2563EB",
-  "#16A34A",
-  "#DC2626",
-  "#F59E0B",
-  "#7C3AED",
-  "#0891B2",
-  "#DB2777",
-  "#65A30D",
-  "#EA580C",
-  "#0F172A"
+  "#2563EB", "#16A34A", "#DC2626", "#F59E0B", "#7C3AED",
+  "#0891B2", "#DB2777", "#65A30D", "#EA580C", "#0F172A"
 ];
 
 const TOTAL_TRIALS = 40;
@@ -52,265 +43,44 @@ function randomItem(arr) {
 
 function shuffleArray(array) {
   const copy = [...array];
-
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-
   return copy;
 }
 
-function hexToRgb(hex) {
-  const clean = hex.replace("#", "");
-
-  return [
-    parseInt(clean.substring(0, 2), 16),
-    parseInt(clean.substring(2, 4), 16),
-    parseInt(clean.substring(4, 6), 16)
-  ];
-}
-
 function ShapeView({ shape, color, size = 120 }) {
-  const base = {
-    width: size,
-    height: size,
-    background: color,
-    display: "inline-block"
-  };
+  const base = { width: size, height: size, background: color, display: "inline-block" };
 
-  if (shape === "circle") {
-    return <div style={{ ...base, borderRadius: "50%" }} />;
-  }
-
-  if (shape === "square") {
-    return <div style={base} />;
-  }
-
-  if (shape === "triangle") {
-    return (
-      <div
-        style={{
-          ...base,
-          clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)"
-        }}
-      />
-    );
-  }
-
-  if (shape === "diamond") {
-    return (
-      <div
-        style={{
-          ...base,
-          transform: "rotate(45deg)"
-        }}
-      />
-    );
-  }
-
-  if (shape === "pentagon") {
-    return (
-      <div
-        style={{
-          ...base,
-          clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)"
-        }}
-      />
-    );
-  }
-
-  if (shape === "hexagon") {
-    return (
-      <div
-        style={{
-          ...base,
-          clipPath: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)"
-        }}
-      />
-    );
-  }
-
-  if (shape === "vertical") {
-    return (
-      <div
-        style={{
-          width: size * 0.45,
-          height: size,
-          background: color,
-          display: "inline-block"
-        }}
-      />
-    );
-  }
-
-  if (shape === "horizontal") {
-    return (
-      <div
-        style={{
-          width: size,
-          height: size * 0.45,
-          background: color,
-          display: "inline-block"
-        }}
-      />
-    );
-  }
+  if (shape === "circle") return <div style={{ ...base, borderRadius: "50%" }} />;
+  if (shape === "square") return <div style={base} />;
+  if (shape === "triangle") return <div style={{ ...base, clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }} />;
+  if (shape === "diamond") return <div style={{ ...base, transform: "rotate(45deg)" }} />;
+  if (shape === "pentagon") return <div style={{ ...base, clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)" }} />;
+  if (shape === "hexagon") return <div style={{ ...base, clipPath: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)" }} />;
+  if (shape === "vertical") return <div style={{ width: size * 0.45, height: size, background: color, display: "inline-block" }} />;
+  if (shape === "horizontal") return <div style={{ width: size, height: size * 0.45, background: color, display: "inline-block" }} />;
 
   if (shape === "plus") {
     return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          position: "relative",
-          display: "inline-block"
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.4,
-            top: 0,
-            width: size * 0.2,
-            height: size,
-            background: color
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: size * 0.4,
-            width: size,
-            height: size * 0.2,
-            background: color
-          }}
-        />
+      <div style={{ width: size, height: size, position: "relative", display: "inline-block" }}>
+        <div style={{ position: "absolute", left: size * 0.4, top: 0, width: size * 0.2, height: size, background: color }} />
+        <div style={{ position: "absolute", left: 0, top: size * 0.4, width: size, height: size * 0.2, background: color }} />
       </div>
     );
   }
 
   if (shape === "xshape") {
     return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          position: "relative",
-          display: "inline-block"
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.43,
-            top: 0,
-            width: size * 0.14,
-            height: size,
-            background: color,
-            transform: "rotate(45deg)"
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.43,
-            top: 0,
-            width: size * 0.14,
-            height: size,
-            background: color,
-            transform: "rotate(-45deg)"
-          }}
-        />
+      <div style={{ width: size, height: size, position: "relative", display: "inline-block" }}>
+        <div style={{ position: "absolute", left: size * 0.43, top: 0, width: size * 0.14, height: size, background: color, transform: "rotate(45deg)" }} />
+        <div style={{ position: "absolute", left: size * 0.43, top: 0, width: size * 0.14, height: size, background: color, transform: "rotate(-45deg)" }} />
       </div>
     );
   }
 
   return null;
-}
-
-function drawPdfShape(doc, shape, colorHex, x, y, size) {
-  const [r, g, b] = hexToRgb(colorHex);
-
-  doc.setFillColor(r, g, b);
-  doc.setDrawColor(r, g, b);
-
-  if (shape === "circle") {
-    doc.circle(x + size / 2, y + size / 2, size / 2, "F");
-  }
-
-  if (shape === "square") {
-    doc.rect(x, y, size, size, "F");
-  }
-
-  if (shape === "triangle") {
-    doc.triangle(x + size / 2, y, x, y + size, x + size, y + size, "F");
-  }
-
-  if (shape === "diamond") {
-    doc.triangle(x + size / 2, y, x, y + size / 2, x + size / 2, y + size, "F");
-    doc.triangle(x + size / 2, y, x + size, y + size / 2, x + size / 2, y + size, "F");
-  }
-
-  if (shape === "pentagon") {
-    const points = [
-      [x + size / 2, y],
-      [x + size, y + size * 0.38],
-      [x + size * 0.82, y + size],
-      [x + size * 0.18, y + size],
-      [x, y + size * 0.38]
-    ];
-
-    doc.lines(
-      points.slice(1).map((p, i) => [p[0] - points[i][0], p[1] - points[i][1]]),
-      points[0][0],
-      points[0][1],
-      [1, 1],
-      "F",
-      true
-    );
-  }
-
-  if (shape === "hexagon") {
-    const points = [
-      [x + size * 0.25, y],
-      [x + size * 0.75, y],
-      [x + size, y + size * 0.5],
-      [x + size * 0.75, y + size],
-      [x + size * 0.25, y + size],
-      [x, y + size * 0.5]
-    ];
-
-    doc.lines(
-      points.slice(1).map((p, i) => [p[0] - points[i][0], p[1] - points[i][1]]),
-      points[0][0],
-      points[0][1],
-      [1, 1],
-      "F",
-      true
-    );
-  }
-
-  if (shape === "vertical") {
-    doc.rect(x + size * 0.28, y, size * 0.44, size, "F");
-  }
-
-  if (shape === "horizontal") {
-    doc.rect(x, y + size * 0.28, size, size * 0.44, "F");
-  }
-
-  if (shape === "plus") {
-    doc.rect(x + size * 0.4, y, size * 0.2, size, "F");
-    doc.rect(x, y + size * 0.4, size, size * 0.2, "F");
-  }
-
-  if (shape === "xshape") {
-    doc.setLineWidth(size * 0.12);
-    doc.line(x, y, x + size, y + size);
-    doc.line(x + size, y, x, y + size);
-    doc.setLineWidth(0.2);
-  }
 }
 
 export default function App() {
@@ -331,7 +101,6 @@ export default function App() {
       shape: randomItem(SHAPES).id,
       color: randomItem(COLORS)
     };
-
     targetRef.current = newTarget;
     setTarget(newTarget);
   };
@@ -349,16 +118,12 @@ export default function App() {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const createTrialPlan = () => {
     const targets = Array.from({ length: TARGET_COUNT }, () => true);
     const nonTargets = Array.from({ length: TOTAL_TRIALS - TARGET_COUNT }, () => false);
-
     trialPlan.current = shuffleArray([...targets, ...nonTargets]);
   };
 
@@ -378,10 +143,7 @@ export default function App() {
         shape: randomItem(SHAPES).id,
         color: randomItem(COLORS)
       };
-    } while (
-      obj.shape === currentTarget.shape &&
-      obj.color === currentTarget.color
-    );
+    } while (obj.shape === currentTarget.shape && obj.color === currentTarget.color);
 
     return obj;
   };
@@ -409,13 +171,11 @@ export default function App() {
     if (!currentTrial.current) return;
 
     const now = performance.now();
-
     currentTrial.current.responses.push(now);
 
     if (!currentTrial.current.responded) {
       currentTrial.current.responded = true;
-      currentTrial.current.reactionTime =
-        now - currentTrial.current.startTime;
+      currentTrial.current.reactionTime = now - currentTrial.current.startTime;
     }
   };
 
@@ -431,7 +191,6 @@ export default function App() {
     const isTarget = trialPlan.current[counter.current];
     const currentTarget = targetRef.current;
     const shownObject = isTarget ? { ...currentTarget } : createNonTargetObject();
-    const startTime = performance.now();
 
     currentTrial.current = {
       trialNumber,
@@ -444,7 +203,7 @@ export default function App() {
       responded: false,
       reactionTime: 0,
       responses: [],
-      startTime
+      startTime: performance.now()
     };
 
     setScene({
@@ -479,13 +238,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (view === "PLAY" && targetRef.current) {
-      nextTrial();
-    }
-
-    return () => {
-      clearTimeout(timer.current);
-    };
+    if (view === "PLAY" && targetRef.current) nextTrial();
+    return () => clearTimeout(timer.current);
   }, [view]);
 
   const getRawMetrics = () => {
@@ -495,28 +249,18 @@ export default function App() {
 
     const correctHits = targets.filter((t) => t.responded);
     const omissions = targets.filter((t) => !t.responded);
-    const lateResponses = targets.filter(
-      (t) => t.responded && t.reactionTime > LATE_RESPONSE_MS
-    );
+    const lateResponses = targets.filter((t) => t.responded && t.reactionTime > LATE_RESPONSE_MS);
     const impulsiveErrors = nonTargets.filter((t) => t.responded);
     const multiPress = logs.filter((t) => t.responseCount > 1);
 
     const avgReaction =
       correctHits.length > 0
-        ? Math.round(
-            correctHits.reduce((sum, t) => sum + t.reactionTime, 0) /
-              correctHits.length
-          )
+        ? Math.round(correctHits.reduce((sum, t) => sum + t.reactionTime, 0) / correctHits.length)
         : 0;
 
     const accuracy =
       logs.length > 0
-        ? Math.round(
-            ((correctHits.length +
-              nonTargets.filter((t) => !t.responded).length) /
-              logs.length) *
-              100
-          )
+        ? Math.round(((correctHits.length + nonTargets.filter((t) => !t.responded).length) / logs.length) * 100)
         : 0;
 
     return {
@@ -553,7 +297,6 @@ export default function App() {
 
   const getLevelText = (score) => {
     const level = getLevel(score);
-
     if (level === 1) return "İyi Performans";
     if (level === 2) return "Standart Performans";
     if (level === 3) return "Düşük Performans";
@@ -562,20 +305,10 @@ export default function App() {
 
   const getScoreColor = (score) => {
     const level = getLevel(score);
-
     if (level === 1) return "#16A34A";
     if (level === 2) return "#65A30D";
     if (level === 3) return "#F59E0B";
     return "#DC2626";
-  };
-
-  const getPdfColor = (score) => {
-    const level = getLevel(score);
-
-    if (level === 1) return [22, 163, 74];
-    if (level === 2) return [101, 163, 13];
-    if (level === 3) return [245, 158, 11];
-    return [220, 38, 38];
   };
 
   const getPerformanceScoreSeries = () => {
@@ -591,13 +324,7 @@ export default function App() {
 
     trialLog.current.forEach((trial) => {
       if (trial.isTarget && !trial.responded) attentionScore -= 8;
-      if (
-        trial.isTarget &&
-        trial.responded &&
-        trial.reactionTime > LATE_RESPONSE_MS
-      ) {
-        timingScore -= 4;
-      }
+      if (trial.isTarget && trial.responded && trial.reactionTime > LATE_RESPONSE_MS) timingScore -= 4;
       if (!trial.isTarget && trial.responded) impulsivityScore -= 10;
       if (trial.responseCount > 1) hyperactivityScore -= 10;
 
@@ -607,12 +334,7 @@ export default function App() {
       hyperactivityData.push(Math.max(hyperactivityScore, 0));
     });
 
-    return {
-      attentionData,
-      timingData,
-      impulsivityData,
-      hyperactivityData
-    };
+    return { attentionData, timingData, impulsivityData, hyperactivityData };
   };
 
   const buildChartData = () => {
@@ -682,9 +404,7 @@ export default function App() {
       const list = trialLog.current.filter((t) => t.section === section);
 
       const omissions = list.filter((t) => t.isTarget && !t.responded).length;
-      const late = list.filter(
-        (t) => t.isTarget && t.responded && t.reactionTime > LATE_RESPONSE_MS
-      ).length;
+      const late = list.filter((t) => t.isTarget && t.responded && t.reactionTime > LATE_RESPONSE_MS).length;
       const impulse = list.filter((t) => !t.isTarget && t.responded).length;
       const hyper = list.filter((t) => t.responseCount > 1).length;
 
@@ -705,113 +425,236 @@ export default function App() {
       `Test ${metrics.totalTrials} deneme üzerinden tamamlandı. Genel doğruluk oranı %${metrics.accuracy}, ortalama tepki süresi ${metrics.avgReaction} ms olarak hesaplandı.`
     );
 
-    if (scores.attention >= 6) {
-      comments.push("Dikkat alanında belirgin zorlanma görüldü.");
-    } else if (scores.attention >= 3) {
-      comments.push("Dikkat performansında zaman zaman düşüş görüldü.");
-    } else {
-      comments.push("Dikkat performansı genel olarak korunmuştur.");
-    }
+    if (scores.attention >= 6) comments.push("Dikkat alanında belirgin zorlanma görüldü.");
+    else if (scores.attention >= 3) comments.push("Dikkat performansında zaman zaman düşüş görüldü.");
+    else comments.push("Dikkat performansı genel olarak korunmuştur.");
 
-    if (scores.timing >= 6) {
-      comments.push("Zamanlama alanında belirgin gecikme vardır.");
-    } else if (scores.timing >= 3) {
-      comments.push("Zamanlama performansında hafif-orta düzeyde gecikmeler görülmüştür.");
-    } else {
-      comments.push("Zamanlama becerisi genel olarak yeterli görünmektedir.");
-    }
+    if (scores.timing >= 6) comments.push("Zamanlama alanında belirgin gecikme vardır.");
+    else if (scores.timing >= 3) comments.push("Zamanlama performansında hafif-orta düzeyde gecikmeler görülmüştür.");
+    else comments.push("Zamanlama becerisi genel olarak yeterli görünmektedir.");
 
-    if (scores.impulsivity >= 6) {
-      comments.push("Dürtüsel tepki eğilimi yüksektir.");
-    } else if (scores.impulsivity >= 3) {
-      comments.push("Dürtüsel yanıtlar zaman zaman ortaya çıkmıştır.");
-    } else {
-      comments.push("Dürtü kontrolü genel olarak korunmuştur.");
-    }
+    if (scores.impulsivity >= 6) comments.push("Dürtüsel tepki eğilimi yüksektir.");
+    else if (scores.impulsivity >= 3) comments.push("Dürtüsel yanıtlar zaman zaman ortaya çıkmıştır.");
+    else comments.push("Dürtü kontrolü genel olarak korunmuştur.");
 
-    if (scores.hyperactivity >= 6) {
-      comments.push("Motor yanıt kontrolünde belirgin düzensizlik vardır.");
-    } else if (scores.hyperactivity >= 3) {
-      comments.push("Motor yanıt kontrolünde zaman zaman düzensizlik görülmüştür.");
-    } else {
-      comments.push("Motor yanıt kontrolü genel olarak düzenlidir.");
-    }
+    if (scores.hyperactivity >= 6) comments.push("Motor yanıt kontrolünde belirgin düzensizlik vardır.");
+    else if (scores.hyperactivity >= 3) comments.push("Motor yanıt kontrolünde zaman zaman düzensizlik görülmüştür.");
+    else comments.push("Motor yanıt kontrolü genel olarak düzenlidir.");
 
     return comments.join(" ");
   };
 
-  const drawPdfCard = (doc, title, value, x, y) => {
-    const color = getPdfColor(value);
+  const drawCanvasShape = (ctx, shape, color, x, y, size) => {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = size * 0.12;
 
-    doc.setFillColor(...color);
-    doc.roundedRect(x, y, 42, 25, 3, 3, "F");
+    if (shape === "circle") {
+      ctx.beginPath();
+      ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
-    doc.text(title, x + 5, y + 8);
+    if (shape === "square") {
+      ctx.fillRect(x, y, size, size);
+    }
 
-    doc.setFontSize(16);
-    doc.text(String(value), x + 5, y + 19);
+    if (shape === "triangle") {
+      ctx.beginPath();
+      ctx.moveTo(x + size / 2, y);
+      ctx.lineTo(x, y + size);
+      ctx.lineTo(x + size, y + size);
+      ctx.closePath();
+      ctx.fill();
+    }
 
-    doc.setTextColor(0, 0, 0);
+    if (shape === "diamond") {
+      ctx.beginPath();
+      ctx.moveTo(x + size / 2, y);
+      ctx.lineTo(x + size, y + size / 2);
+      ctx.lineTo(x + size / 2, y + size);
+      ctx.lineTo(x, y + size / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    if (shape === "pentagon") {
+      ctx.beginPath();
+      ctx.moveTo(x + size / 2, y);
+      ctx.lineTo(x + size, y + size * 0.38);
+      ctx.lineTo(x + size * 0.82, y + size);
+      ctx.lineTo(x + size * 0.18, y + size);
+      ctx.lineTo(x, y + size * 0.38);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    if (shape === "hexagon") {
+      ctx.beginPath();
+      ctx.moveTo(x + size * 0.25, y);
+      ctx.lineTo(x + size * 0.75, y);
+      ctx.lineTo(x + size, y + size * 0.5);
+      ctx.lineTo(x + size * 0.75, y + size);
+      ctx.lineTo(x + size * 0.25, y + size);
+      ctx.lineTo(x, y + size * 0.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    if (shape === "vertical") {
+      ctx.fillRect(x + size * 0.28, y, size * 0.44, size);
+    }
+
+    if (shape === "horizontal") {
+      ctx.fillRect(x, y + size * 0.28, size, size * 0.44);
+    }
+
+    if (shape === "plus") {
+      ctx.fillRect(x + size * 0.4, y, size * 0.2, size);
+      ctx.fillRect(x, y + size * 0.4, size, size * 0.2);
+    }
+
+    if (shape === "xshape") {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + size, y + size);
+      ctx.moveTo(x + size, y);
+      ctx.lineTo(x, y + size);
+      ctx.stroke();
+    }
   };
 
-  const downloadReport = () => {
+  const drawWrappedText = (ctx, text, x, y, maxWidth, lineHeight) => {
+    const words = text.split(" ");
+    let line = "";
+    let currentY = y;
+
+    words.forEach((word) => {
+      const testLine = line + word + " ";
+      const metrics = ctx.measureText(testLine);
+
+      if (metrics.width > maxWidth && line !== "") {
+        ctx.fillText(line, x, currentY);
+        line = word + " ";
+        currentY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    });
+
+    ctx.fillText(line, x, currentY);
+    return currentY + lineHeight;
+  };
+
+  const createPdfPageCanvas = (pageNumber) => {
     const scores = calculateScores();
     const metrics = getRawMetrics();
     const sections = getSectionSummary();
     const currentTarget = targetRef.current;
 
-    const doc = new jsPDF("p", "mm", "a4");
+    const canvas = document.createElement("canvas");
+    canvas.width = 1240;
+    canvas.height = 1754;
 
-    doc.setFillColor(20, 36, 64);
-    doc.rect(0, 0, 210, 34, "F");
+    const ctx = canvas.getContext("2d");
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(19);
-    doc.text("Dikkat Performans Raporu", 14, 17);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    doc.setFontSize(9);
-    doc.text("Bilgisayarlı dikkat ve tepki kontrolü değerlendirmesi", 14, 26);
+    ctx.fillStyle = "#142440";
+    ctx.fillRect(0, 0, canvas.width, 190);
 
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(10);
-    doc.text("Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR"), 14, 45);
-    doc.text("Test Tipi: 10 nesneli hedef / hedef dışı uyaran görevi", 14, 52);
-    doc.text("Toplam Deneme: " + TOTAL_TRIALS, 14, 59);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "52px Arial";
+    ctx.fillText(
+      pageNumber === 1 ? "Dikkat Performans Raporu" : "Performans Grafiği",
+      80,
+      85
+    );
 
-    doc.text("Hedef Nesne:", 14, 72);
-    drawPdfShape(doc, currentTarget.shape, currentTarget.color, 45, 63, 18);
+    ctx.font = "24px Arial";
+    ctx.fillText(
+      pageNumber === 1
+        ? "Bilgisayarlı dikkat ve tepki kontrolü değerlendirmesi"
+        : "Bölüm bazlı performans ve otomatik yorum",
+      80,
+      145
+    );
 
-    drawPdfCard(doc, "Dikkat", scores.attention, 14, 90);
-    drawPdfCard(doc, "Zamanlama", scores.timing, 60, 90);
-    drawPdfCard(doc, "Dürtüsellik", scores.impulsivity, 106, 90);
-    drawPdfCard(doc, "Hiperaktivite", scores.hyperactivity, 152, 90);
+    ctx.fillStyle = "#111827";
 
-    autoTable(doc, {
-      startY: 128,
-      head: [["İndeks", "Hata Skoru", "Seviye", "Yorum"]],
-      body: [
+    if (pageNumber === 1) {
+      ctx.font = "26px Arial";
+      ctx.fillText("Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR"), 80, 280);
+      ctx.fillText("Test Tipi: 10 nesneli hedef / hedef dışı uyaran görevi", 80, 330);
+      ctx.fillText("Toplam Deneme: " + TOTAL_TRIALS, 80, 380);
+      ctx.fillText("Hedef Nesne:", 80, 450);
+      drawCanvasShape(ctx, currentTarget.shape, currentTarget.color, 260, 405, 70);
+
+      const cardData = [
+        ["Dikkat", scores.attention],
+        ["Zamanlama", scores.timing],
+        ["Dürtüsellik", scores.impulsivity],
+        ["Hiperaktivite", scores.hyperactivity]
+      ];
+
+      cardData.forEach((item, index) => {
+        const x = 80 + index * 285;
+        const y = 560;
+        ctx.fillStyle = getScoreColor(item[1]);
+        ctx.roundRect(x, y, 250, 145, 18);
+        ctx.fill();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "27px Arial";
+        ctx.fillText(item[0], x + 28, y + 55);
+        ctx.font = "48px Arial";
+        ctx.fillText(String(item[1]), x + 28, y + 115);
+      });
+
+      const tableY = 820;
+      ctx.fillStyle = "#142440";
+      ctx.fillRect(80, tableY, 1080, 60);
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "24px Arial";
+      ctx.fillText("İndeks", 100, tableY + 38);
+      ctx.fillText("Hata Skoru", 390, tableY + 38);
+      ctx.fillText("Seviye", 610, tableY + 38);
+      ctx.fillText("Yorum", 790, tableY + 38);
+
+      const rows = [
         ["A - Dikkat", scores.attention, getLevel(scores.attention), getLevelText(scores.attention)],
         ["T - Zamanlama", scores.timing, getLevel(scores.timing), getLevelText(scores.timing)],
         ["I - Dürtüsellik", scores.impulsivity, getLevel(scores.impulsivity), getLevelText(scores.impulsivity)],
         ["H - Hiperaktivite", scores.hyperactivity, getLevel(scores.hyperactivity), getLevelText(scores.hyperactivity)]
-      ],
-      theme: "grid",
-      headStyles: {
-        fillColor: [20, 36, 64],
-        textColor: [255, 255, 255]
-      },
-      styles: {
-        fontSize: 9,
-        cellPadding: 3
-      }
-    });
+      ];
 
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 10,
-      head: [["Ölçüm", "Değer"]],
-      body: [
+      ctx.font = "23px Arial";
+      rows.forEach((row, index) => {
+        const y = tableY + 60 + index * 60;
+        ctx.fillStyle = index % 2 === 0 ? "#F8FAFC" : "#FFFFFF";
+        ctx.fillRect(80, y, 1080, 60);
+        ctx.strokeStyle = "#CBD5E1";
+        ctx.strokeRect(80, y, 1080, 60);
+
+        ctx.fillStyle = "#111827";
+        ctx.fillText(row[0], 100, y + 38);
+        ctx.fillText(String(row[1]), 390, y + 38);
+        ctx.fillText(String(row[2]), 610, y + 38);
+        ctx.fillText(row[3], 790, y + 38);
+      });
+
+      const metricY = 1130;
+      ctx.fillStyle = "#142440";
+      ctx.fillRect(80, metricY, 1080, 60);
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "24px Arial";
+      ctx.fillText("Ölçüm", 100, metricY + 38);
+      ctx.fillText("Değer", 650, metricY + 38);
+
+      const metricRows = [
         ["Genel Doğruluk", "%" + metrics.accuracy],
         ["Ortalama Tepki Süresi", metrics.avgReaction + " ms"],
         ["Hedef Sayısı", metrics.targets],
@@ -821,75 +664,99 @@ export default function App() {
         ["Geç Yanıt", metrics.lateResponses],
         ["Yanlış / Dürtüsel Yanıt", metrics.impulsiveErrors],
         ["Çoklu Tuşlama", metrics.multiPress]
-      ],
-      theme: "striped",
-      headStyles: {
-        fillColor: [55, 65, 81],
-        textColor: [255, 255, 255]
-      },
-      styles: {
-        fontSize: 9,
-        cellPadding: 3
-      }
-    });
+      ];
 
-    const chart = chartRef.current;
-    const chartImage = chart?.canvas?.toDataURL("image/png", 1.0);
+      ctx.font = "22px Arial";
+      metricRows.forEach((row, index) => {
+        const y = metricY + 60 + index * 48;
+        ctx.fillStyle = index % 2 === 0 ? "#F8FAFC" : "#FFFFFF";
+        ctx.fillRect(80, y, 1080, 48);
+        ctx.strokeStyle = "#CBD5E1";
+        ctx.strokeRect(80, y, 1080, 48);
 
-    doc.addPage();
-
-    doc.setFillColor(20, 36, 64);
-    doc.rect(0, 0, 210, 24, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(15);
-    doc.text("Performans Grafiği", 14, 15);
-
-    doc.setTextColor(0, 0, 0);
-
-    if (chartImage) {
-      doc.addImage(chartImage, "PNG", 12, 34, 186, 95);
+        ctx.fillStyle = "#111827";
+        ctx.fillText(row[0], 100, y + 31);
+        ctx.fillText(String(row[1]), 650, y + 31);
+      });
     }
 
-    autoTable(doc, {
-      startY: 140,
-      head: [["Bölüm", "Dikkat", "Zamanlama", "Dürtüsellik", "Hiperaktivite"]],
-      body: sections.map((s) => [
-        s.section,
-        s.attentionScore,
-        s.timingScore,
-        s.impulsivityScore,
-        s.hyperactivityScore
-      ]),
-      theme: "grid",
-      headStyles: {
-        fillColor: [20, 36, 64],
-        textColor: [255, 255, 255]
-      },
-      styles: {
-        fontSize: 9,
-        cellPadding: 3
+    if (pageNumber === 2) {
+      const chart = chartRef.current;
+      const chartImage = chart?.canvas?.toDataURL("image/png", 1.0);
+
+      if (chartImage) {
+        const img = new Image();
+        img.src = chartImage;
+        ctx.drawImage(img, 80, 240, 1080, 520);
       }
-    });
 
-    doc.setFontSize(14);
-    doc.text("Otomatik Yorum", 14, doc.lastAutoTable.finalY + 16);
+      const tableY = 840;
 
-    doc.setFontSize(10);
-    doc.text(generateSmartComment(scores, metrics), 14, doc.lastAutoTable.finalY + 26, {
-      maxWidth: 182
-    });
+      ctx.fillStyle = "#142440";
+      ctx.fillRect(80, tableY, 1080, 60);
 
-    doc.setFontSize(8);
-    doc.setTextColor(90, 90, 90);
-    doc.text(
-      "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
-      14,
-      282,
-      { maxWidth: 182 }
-    );
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "23px Arial";
+      ctx.fillText("Bölüm", 100, tableY + 38);
+      ctx.fillText("Dikkat", 340, tableY + 38);
+      ctx.fillText("Zamanlama", 520, tableY + 38);
+      ctx.fillText("Dürtüsellik", 760, tableY + 38);
+      ctx.fillText("Hiperaktivite", 980, tableY + 38);
 
-    doc.save("dikkat-performans-raporu.pdf");
+      ctx.font = "22px Arial";
+      sections.forEach((row, index) => {
+        const y = tableY + 60 + index * 55;
+        ctx.fillStyle = index % 2 === 0 ? "#F8FAFC" : "#FFFFFF";
+        ctx.fillRect(80, y, 1080, 55);
+        ctx.strokeStyle = "#CBD5E1";
+        ctx.strokeRect(80, y, 1080, 55);
+
+        ctx.fillStyle = "#111827";
+        ctx.fillText(row.section, 100, y + 36);
+        ctx.fillText(String(row.attentionScore), 340, y + 36);
+        ctx.fillText(String(row.timingScore), 520, y + 36);
+        ctx.fillText(String(row.impulsivityScore), 760, y + 36);
+        ctx.fillText(String(row.hyperactivityScore), 980, y + 36);
+      });
+
+      ctx.fillStyle = "#111827";
+      ctx.font = "30px Arial";
+      ctx.fillText("Otomatik Yorum", 80, 1160);
+
+      ctx.font = "24px Arial";
+      drawWrappedText(ctx, generateSmartComment(scores, metrics), 80, 1210, 1080, 34);
+
+      ctx.font = "18px Arial";
+      ctx.fillStyle = "#64748B";
+      drawWrappedText(
+        ctx,
+        "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
+        80,
+        1660,
+        1080,
+        26
+      );
+    }
+
+    return canvas;
+  };
+
+  const downloadReport = () => {
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const page1 = createPdfPageCanvas(1);
+    const page1Image = page1.toDataURL("image/png", 1.0);
+
+    pdf.addImage(page1Image, "PNG", 0, 0, 210, 297);
+
+    pdf.addPage();
+
+    const page2 = createPdfPageCanvas(2);
+    const page2Image = page2.toDataURL("image/png", 1.0);
+
+    pdf.addImage(page2Image, "PNG", 0, 0, 210, 297);
+
+    pdf.save("dikkat-performans-raporu.pdf");
   };
 
   const scores = calculateScores();
