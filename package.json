@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "pdfmake": "^0.2.18"
     "chart.js": "^4.4.7",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.23",
