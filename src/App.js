@@ -111,38 +111,85 @@ export default function App() {
   };
 
   // 📄 PDF RAPOR
-  const downloadReport = () => {
-    const s = calculateScores();
+const downloadReport = () => {
+  const s = calculateScores();
 
-    const doc = new jsPDF();
+  const doc = new jsPDF();
 
-    doc.setFontSize(18);
-    doc.text("Dikkat Performans Raporu", 20, 20);
+  // 🧠 BAŞLIK
+  doc.setFontSize(20);
+  doc.text("Attention Performance Report", 20, 20);
 
-    doc.setFontSize(12);
+  doc.setFontSize(12);
+  doc.text("Computerized Attention Assessment", 20, 28);
 
-    doc.text(`Dikkat (A): ${s.attention}`, 20, 50);
-    doc.text(`Zamanlama (T): ${s.timing}`, 20, 60);
-    doc.text(`Dürtüsellik (I): ${s.impulsivity}`, 20, 70);
-    doc.text(`Hiperaktivite (H): ${s.hyperactivity}`, 20, 80);
+  // 👤 KİŞİ BİLGİ
+  doc.setFontSize(10);
+  doc.text("Ad: Kullanıcı", 20, 40);
+  doc.text("Tarih: " + new Date().toLocaleDateString(), 20, 45);
 
-    doc.text("Seviyeler:", 20, 100);
-
-    doc.text(`A: ${getLevel(s.attention)}`, 20, 110);
-    doc.text(`T: ${getLevel(s.timing)}`, 20, 120);
-    doc.text(`I: ${getLevel(s.impulsivity)}`, 20, 130);
-    doc.text(`H: ${getLevel(s.hyperactivity)}`, 20, 140);
-
-    doc.setFontSize(10);
-    doc.text(
-      "Bu test tanı koymaz. Sadece dikkat performansı hakkında bilgi verir.",
-      20,
-      170
-    );
-
-    doc.save("rapor.pdf");
+  // 📊 TABLO
+  const getLevelText = (v) => {
+    const lvl = getLevel(v);
+    if (lvl === 1) return "İyi";
+    if (lvl === 2) return "Orta";
+    if (lvl === 3) return "Düşük";
+    return "Zayıf";
   };
 
+  const data = [
+    ["Parametre", "Skor", "Seviye"],
+    ["Dikkat (A)", s.attention, getLevelText(s.attention)],
+    ["Zamanlama (T)", s.timing, getLevelText(s.timing)],
+    ["Dürtüsellik (I)", s.impulsivity, getLevelText(s.impulsivity)],
+    ["Hiperaktivite (H)", s.hyperactivity, getLevelText(s.hyperactivity)],
+  ];
+
+  let y = 60;
+
+  data.forEach((row, i) => {
+    row.forEach((col, j) => {
+      doc.text(String(col), 20 + j * 60, y);
+    });
+    y += 10;
+  });
+
+  // 📊 ŞİDDET AÇIKLAMA
+  doc.setFontSize(10);
+  doc.text("1: İyi  |  2: Orta  |  3: Düşük  |  4: Zayıf", 20, y + 10);
+
+  // 🧠 OTOMATİK YORUM
+  let yorum = "";
+
+  if (s.attention > 5)
+    yorum += "Dikkat performansında belirgin zorluk gözlemlendi. ";
+
+  if (s.timing > 5)
+    yorum += "Zamanlama becerisi düşük olabilir. ";
+
+  if (s.impulsivity > 5)
+    yorum += "Dürtüsel tepki eğilimi yüksek. ";
+
+  if (s.hyperactivity > 5)
+    yorum += "Hiperaktivite belirtileri mevcut. ";
+
+  if (yorum === "") yorum = "Performans genel olarak normal aralıktadır.";
+
+  doc.setFontSize(12);
+  doc.text("Yorum:", 20, y + 25);
+  doc.setFontSize(10);
+  doc.text(yorum, 20, y + 35, { maxWidth: 170 });
+
+  // ⚠️ UYARI
+  doc.setFontSize(8);
+  doc.text(
+    "Bu test klinik tanı koymaz. Yalnızca performans değerlendirmesi sağlar.",
+    20,
+    270
+  );
+
+  doc.save("rapor.pdf");
+};
   // 🎨 UI
   return (
     <div
