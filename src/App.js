@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -28,8 +29,19 @@ export default function App() {
   const currentTrial = useRef(null);
   const counter = useRef(0);
   const timer = useRef(null);
+  const chartRef = useRef(null);
 
-  const TOTAL_TRIALS = 20;
+  const TOTAL_TRIALS = 32;
+  const STIMULUS_DURATION = 1000;
+  const GAP_DURATION = 500;
+  const LATE_RESPONSE_MS = 800;
+
+  const getSectionName = (trialNumber) => {
+    if (trialNumber <= 8) return "Temel";
+    if (trialNumber <= 16) return "Gorsel";
+    if (trialNumber <= 24) return "Isitsel";
+    return "Kombine";
+  };
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -76,11 +88,13 @@ export default function App() {
       return;
     }
 
-    const isTarget = Math.random() > 0.5;
+    const trialNumber = counter.current + 1;
+    const isTarget = Math.random() > 0.35;
     const startTime = performance.now();
 
     currentTrial.current = {
-      trialNumber: counter.current + 1,
+      trialNumber,
+      section: getSectionName(trialNumber),
       isTarget,
       startTime,
       responded: false,
@@ -98,6 +112,7 @@ export default function App() {
       if (t) {
         trialLog.current.push({
           trialNumber: t.trialNumber,
+          section: t.section,
           isTarget: t.isTarget,
           responded: t.responded,
           reactionTime: t.reactionTime || 0,
@@ -109,8 +124,8 @@ export default function App() {
 
       timer.current = setTimeout(() => {
         nextTrial();
-      }, 500);
-    }, 1000);
+      }, GAP_DURATION);
+    }, STIMULUS_DURATION);
   };
 
   useEffect(() => {
@@ -123,35 +138,59 @@ export default function App() {
     };
   }, [view]);
 
-  const calculateScores = () => {
-    let attention = 0;
-    let timing = 0;
-    let impulsivity = 0;
-    let hyperactivity = 0;
+  const getRawMetrics = () => {
+    const logs = trialLog.current;
 
-    trialLog.current.forEach((trial) => {
-      if (trial.isTarget && !trial.responded) {
-        attention += 1;
-      }
+    const targets = logs.filter((t) => t.isTarget);
+    const nonTargets = logs.filter((t) => !t.isTarget);
 
-      if (trial.isTarget && trial.responded && trial.reactionTime > 800) {
-        timing += 1;
-      }
+    const correctHits = targets.filter((t) => t.responded);
+    const omissions = targets.filter((t) => !t.responded);
+    const lateResponses = targets.filter(
+      (t) => t.responded && t.reactionTime > LATE_RESPONSE_MS
+    );
+    const impulsiveErrors = nonTargets.filter((t) => t.responded);
+    const multiPress = logs.filter((t) => t.responseCount > 1);
 
-      if (!trial.isTarget && trial.responded) {
-        impulsivity += 1;
-      }
+    const avgReaction =
+      correctHits.length > 0
+        ? Math.round(
+            correctHits.reduce((sum, t) => sum + t.reactionTime, 0) /
+              correctHits.length
+          )
+        : 0;
 
-      if (trial.responseCount > 1) {
-        hyperactivity += 1;
-      }
-    });
+    const accuracy =
+      logs.length > 0
+        ? Math.round(
+            ((correctHits.length + nonTargets.filter((t) => !t.responded).length) /
+              logs.length) *
+              100
+          )
+        : 0;
 
     return {
-      attention,
-      timing,
-      impulsivity,
-      hyperactivity
+      totalTrials: logs.length,
+      targets: targets.length,
+      nonTargets: nonTargets.length,
+      correctHits: correctHits.length,
+      omissions: omissions.length,
+      lateResponses: lateResponses.length,
+      impulsiveErrors: impulsiveErrors.length,
+      multiPress: multiPress.length,
+      avgReaction,
+      accuracy
+    };
+  };
+
+  const calculateScores = () => {
+    const m = getRawMetrics();
+
+    return {
+      attention: m.omissions,
+      timing: m.lateResponses,
+      impulsivity: m.impulsiveErrors,
+      hyperactivity: m.multiPress
     };
   };
 
@@ -165,97 +204,31 @@ export default function App() {
   const getLevelText = (score) => {
     const level = getLevel(score);
 
-    if (level === 1) return "İyi Performans";
+    if (level === 1) return "Iyi Performans";
     if (level === 2) return "Standart Performans";
-    if (level === 3) return "Düşük Performans";
+    if (level === 3) return "Dusuk Performans";
     return "Performansta Zorluk";
   };
 
   const getScoreColor = (score) => {
     const level = getLevel(score);
 
-    if (level === 1) return "#1E9E4A";
-    if (level === 2) return "#73B72B";
-    if (level === 3) return "#F0A000";
-    return "#D93025";
+    if (level === 1) return "#16A34A";
+    if (level === 2) return "#65A30D";
+    if (level === 3) return "#F59E0B";
+    return "#DC2626";
   };
 
   const getPdfColor = (score) => {
     const level = getLevel(score);
 
-    if (level === 1) return [30, 158, 74];
-    if (level === 2) return [115, 183, 43];
-    if (level === 3) return [240, 160, 0];
-    return [217, 48, 37];
+    if (level === 1) return [22, 163, 74];
+    if (level === 2) return [101, 163, 13];
+    if (level === 3) return [245, 158, 11];
+    return [220, 38, 38];
   };
 
-  const generateSmartComment = (scores) => {
-    const comments = [];
-
-    if (scores.attention >= 6) {
-      comments.push(
-        "Dikkat alanında belirgin zorluk gözlenmiştir. Hedef uyaranlara verilen yanıtlarda kaçırmalar artmıştır."
-      );
-    } else if (scores.attention >= 3) {
-      comments.push(
-        "Dikkat performansında dönemsel düşüşler gözlenmiştir. Hedef uyaranlara odaklanma bazı denemelerde zorlaşmıştır."
-      );
-    } else {
-      comments.push("Dikkat performansı genel olarak korunmuştur.");
-    }
-
-    if (scores.timing >= 6) {
-      comments.push(
-        "Zamanlama becerisinde belirgin zorlanma vardır. Doğru yanıtlar bazı durumlarda geç verilmiştir."
-      );
-    } else if (scores.timing >= 3) {
-      comments.push(
-        "Zamanlama performansında hafif-orta düzeyde gecikmeler gözlenmiştir."
-      );
-    } else {
-      comments.push("Zamanlama becerisi genel olarak yeterli görünmektedir.");
-    }
-
-    if (scores.impulsivity >= 6) {
-      comments.push(
-        "Dürtüsellik puanı yüksektir. Hedef olmayan uyaranlara yanıt verme eğilimi artmıştır."
-      );
-    } else if (scores.impulsivity >= 3) {
-      comments.push("Dürtüsel yanıtlar zaman zaman gözlenmiştir.");
-    } else {
-      comments.push("Dürtü kontrolü genel olarak korunmuştur.");
-    }
-
-    if (scores.hyperactivity >= 6) {
-      comments.push(
-        "Hiperaktivite / motor kontrol alanında belirgin zorlanma vardır. Çoklu tuşlama davranışı artmıştır."
-      );
-    } else if (scores.hyperactivity >= 3) {
-      comments.push(
-        "Motor yanıt kontrolünde zaman zaman düzensizlik gözlenmiştir."
-      );
-    } else {
-      comments.push("Motor yanıt kontrolü genel olarak düzenlidir.");
-    }
-
-    if (scores.attention >= 6 && scores.timing >= 6) {
-      comments.push(
-        "Dikkat ve zamanlama alanlarının birlikte etkilenmesi, odaklanma ve işlem hızının birlikte değerlendirilmesi gerektiğini düşündürür."
-      );
-    }
-
-    if (scores.impulsivity >= 6 && scores.hyperactivity >= 6) {
-      comments.push(
-        "Dürtüsellik ve hiperaktivite alanlarının birlikte yükselmesi davranışsal kontrolün ayrıca değerlendirilmesini gerektirebilir."
-      );
-    }
-
-    return comments.join(" ");
-  };
-
-  const buildChartData = () => {
-    const labels = trialLog.current.map((trial) => trial.trialNumber);
-
+  const getPerformanceScoreSeries = () => {
     let attentionScore = 100;
     let timingScore = 100;
     let impulsivityScore = 100;
@@ -267,21 +240,19 @@ export default function App() {
     const hyperactivityData = [];
 
     trialLog.current.forEach((trial) => {
-      if (trial.isTarget && !trial.responded) {
-        attentionScore -= 8;
-      }
+      if (trial.isTarget && !trial.responded) attentionScore -= 8;
 
-      if (trial.isTarget && trial.responded && trial.reactionTime > 800) {
+      if (
+        trial.isTarget &&
+        trial.responded &&
+        trial.reactionTime > LATE_RESPONSE_MS
+      ) {
         timingScore -= 4;
       }
 
-      if (!trial.isTarget && trial.responded) {
-        impulsivityScore -= 10;
-      }
+      if (!trial.isTarget && trial.responded) impulsivityScore -= 10;
 
-      if (trial.responseCount > 1) {
-        hyperactivityScore -= 10;
-      }
+      if (trial.responseCount > 1) hyperactivityScore -= 10;
 
       attentionData.push(Math.max(attentionScore, 0));
       timingData.push(Math.max(timingScore, 0));
@@ -290,35 +261,51 @@ export default function App() {
     });
 
     return {
+      attentionData,
+      timingData,
+      impulsivityData,
+      hyperactivityData
+    };
+  };
+
+  const buildChartData = () => {
+    const labels = trialLog.current.map((trial) => trial.trialNumber);
+    const series = getPerformanceScoreSeries();
+
+    return {
       labels,
       datasets: [
         {
           label: "Dikkat",
-          data: attentionData,
-          borderColor: "#1D4ED8",
-          backgroundColor: "#1D4ED8",
-          tension: 0.3
+          data: series.attentionData,
+          borderColor: "#2563EB",
+          backgroundColor: "#2563EB",
+          tension: 0.25,
+          pointRadius: 3
         },
         {
           label: "Zamanlama",
-          data: timingData,
+          data: series.timingData,
           borderColor: "#16A34A",
           backgroundColor: "#16A34A",
-          tension: 0.3
+          tension: 0.25,
+          pointRadius: 3
         },
         {
-          label: "Dürtüsellik",
-          data: impulsivityData,
+          label: "Durtusellik",
+          data: series.impulsivityData,
           borderColor: "#DC2626",
           backgroundColor: "#DC2626",
-          tension: 0.3
+          tension: 0.25,
+          pointRadius: 3
         },
         {
           label: "Hiperaktivite",
-          data: hyperactivityData,
+          data: series.hyperactivityData,
           borderColor: "#F59E0B",
           backgroundColor: "#F59E0B",
-          tension: 0.3
+          tension: 0.25,
+          pointRadius: 3
         }
       ]
     };
@@ -328,6 +315,7 @@ export default function App() {
     return {
       responsive: true,
       maintainAspectRatio: false,
+      animation: false,
       plugins: {
         legend: {
           display: true,
@@ -340,20 +328,112 @@ export default function App() {
       scales: {
         y: {
           min: 0,
-          max: 100
+          max: 100,
+          ticks: {
+            stepSize: 10
+          }
         }
       }
     };
   };
 
-  const drawPdfScoreCard = (doc, title, value, x, y) => {
+  const getSectionSummary = () => {
+    const sections = ["Temel", "Gorsel", "Isitsel", "Kombine"];
+
+    return sections.map((section) => {
+      const list = trialLog.current.filter((t) => t.section === section);
+
+      const omissions = list.filter((t) => t.isTarget && !t.responded).length;
+      const late = list.filter(
+        (t) => t.isTarget && t.responded && t.reactionTime > LATE_RESPONSE_MS
+      ).length;
+      const impulse = list.filter((t) => !t.isTarget && t.responded).length;
+      const hyper = list.filter((t) => t.responseCount > 1).length;
+
+      return {
+        section,
+        attentionScore: Math.max(100 - omissions * 8, 0),
+        timingScore: Math.max(100 - late * 4, 0),
+        impulsivityScore: Math.max(100 - impulse * 10, 0),
+        hyperactivityScore: Math.max(100 - hyper * 10, 0)
+      };
+    });
+  };
+
+  const generateSmartComment = (scores, metrics) => {
+    const comments = [];
+
+    comments.push(
+      `Test ${metrics.totalTrials} deneme uzerinden tamamlandi. Genel dogruluk orani %${metrics.accuracy}, ortalama tepki suresi ${metrics.avgReaction} ms olarak hesaplandi.`
+    );
+
+    if (scores.attention >= 6) {
+      comments.push(
+        "Dikkat alaninda belirgin zorlanma goruldu. Hedef uyaranlari kacirma sayisi yuksektir."
+      );
+    } else if (scores.attention >= 3) {
+      comments.push(
+        "Dikkat performansinda zaman zaman dusus goruldu. Odaklanma surekliligi desteklenmelidir."
+      );
+    } else {
+      comments.push("Dikkat performansi genel olarak korunmustur.");
+    }
+
+    if (scores.timing >= 6) {
+      comments.push(
+        "Zamanlama alaninda belirgin gecikme vardir. Dogru cevaplarin bir bolumu gec verilmis olabilir."
+      );
+    } else if (scores.timing >= 3) {
+      comments.push(
+        "Zamanlama performansinda hafif-orta duzeyde gecikmeler gorulmustur."
+      );
+    } else {
+      comments.push("Zamanlama becerisi genel olarak yeterli gorunmektedir.");
+    }
+
+    if (scores.impulsivity >= 6) {
+      comments.push(
+        "Durtusel tepki egilimi yuksektir. Hedef olmayan uyaranlara basma davranisi artmistir."
+      );
+    } else if (scores.impulsivity >= 3) {
+      comments.push("Durtusel yanitlar zaman zaman ortaya cikmistir.");
+    } else {
+      comments.push("Durtu kontrolu genel olarak korunmustur.");
+    }
+
+    if (scores.hyperactivity >= 6) {
+      comments.push(
+        "Motor yanit kontrolunde belirgin duzensizlik vardir. Coklu tuslama davranisi artmistir."
+      );
+    } else if (scores.hyperactivity >= 3) {
+      comments.push("Motor yanit kontrolunde zaman zaman duzensizlik gorulmustur.");
+    } else {
+      comments.push("Motor yanit kontrolu genel olarak duzenlidir.");
+    }
+
+    if (scores.attention >= 3 && scores.timing >= 3) {
+      comments.push(
+        "Dikkat ve zamanlama alanlari birlikte etkilendigi icin odaklanma ve islem hizi birlikte degerlendirilmelidir."
+      );
+    }
+
+    if (scores.impulsivity >= 3 && scores.hyperactivity >= 3) {
+      comments.push(
+        "Durtusellik ve hiperaktivite birlikte yukselirse davranissal kontrol alaninin ayrica incelenmesi onerilir."
+      );
+    }
+
+    return comments.join(" ");
+  };
+
+  const drawPdfCard = (doc, title, value, x, y) => {
     const color = getPdfColor(value);
 
     doc.setFillColor(...color);
-    doc.roundedRect(x, y, 40, 25, 3, 3, "F");
+    doc.roundedRect(x, y, 42, 25, 3, 3, "F");
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.text(title, x + 5, y + 8);
 
     doc.setFontSize(16);
@@ -364,138 +444,149 @@ export default function App() {
 
   const downloadReport = () => {
     const scores = calculateScores();
-    const comment = generateSmartComment(scores);
-    const doc = new jsPDF();
+    const metrics = getRawMetrics();
+    const comment = generateSmartComment(scores, metrics);
+    const sections = getSectionSummary();
 
-    doc.setFillColor(24, 54, 92);
+    const doc = new jsPDF("p", "mm", "a4");
+
+    doc.setFillColor(20, 36, 64);
     doc.rect(0, 0, 210, 34, "F");
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.text("Dikkat Performans Raporu", 16, 18);
+    doc.setFontSize(19);
+    doc.text("Dikkat Performans Raporu", 14, 17);
 
     doc.setFontSize(9);
-    doc.text("Bilgisayarlı dikkat performansı değerlendirme çıktısı", 16, 26);
+    doc.text("Bilgisayarli dikkat ve tepki kontrolu degerlendirmesi", 14, 26);
 
     doc.setTextColor(0, 0, 0);
 
     doc.setFontSize(10);
-    doc.text("Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR"), 16, 46);
-    doc.text("Test Tipi: Görsel hedef / hedef dışı uyaran görevi", 16, 53);
-    doc.text("Toplam Deneme: " + TOTAL_TRIALS, 16, 60);
+    doc.text("Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR"), 14, 45);
+    doc.text("Test Tipi: Gorsel hedef / hedef disi uyaran gorevi", 14, 52);
+    doc.text("Toplam Deneme: " + TOTAL_TRIALS, 14, 59);
 
-    drawPdfScoreCard(doc, "Dikkat", scores.attention, 16, 75);
-    drawPdfScoreCard(doc, "Zaman", scores.timing, 62, 75);
-    drawPdfScoreCard(doc, "Dürtü", scores.impulsivity, 108, 75);
-    drawPdfScoreCard(doc, "Hiper", scores.hyperactivity, 154, 75);
+    drawPdfCard(doc, "Dikkat", scores.attention, 14, 72);
+    drawPdfCard(doc, "Zamanlama", scores.timing, 60, 72);
+    drawPdfCard(doc, "Durtusellik", scores.impulsivity, 106, 72);
+    drawPdfCard(doc, "Hiperaktivite", scores.hyperactivity, 152, 72);
 
-    doc.setFontSize(13);
-    doc.text("Performans Seviyeleri", 16, 118);
-
-    const rows = [
-      [
-        "A - Dikkat",
-        scores.attention,
-        getLevel(scores.attention),
-        getLevelText(scores.attention)
+    autoTable(doc, {
+      startY: 110,
+      head: [["Indeks", "Hata Skoru", "Seviye", "Yorum"]],
+      body: [
+        ["A - Dikkat", scores.attention, getLevel(scores.attention), getLevelText(scores.attention)],
+        ["T - Zamanlama", scores.timing, getLevel(scores.timing), getLevelText(scores.timing)],
+        ["I - Durtusellik", scores.impulsivity, getLevel(scores.impulsivity), getLevelText(scores.impulsivity)],
+        ["H - Hiperaktivite", scores.hyperactivity, getLevel(scores.hyperactivity), getLevelText(scores.hyperactivity)]
       ],
-      [
-        "T - Zamanlama",
-        scores.timing,
-        getLevel(scores.timing),
-        getLevelText(scores.timing)
-      ],
-      [
-        "I - Dürtüsellik",
-        scores.impulsivity,
-        getLevel(scores.impulsivity),
-        getLevelText(scores.impulsivity)
-      ],
-      [
-        "H - Hiperaktivite",
-        scores.hyperactivity,
-        getLevel(scores.hyperactivity),
-        getLevelText(scores.hyperactivity)
-      ]
-    ];
-
-    let y = 132;
-
-    doc.setFillColor(235, 238, 242);
-    doc.rect(16, y - 7, 178, 9, "F");
-
-    doc.setFontSize(9);
-    doc.text("Alan", 20, y);
-    doc.text("Skor", 78, y);
-    doc.text("Seviye", 110, y);
-    doc.text("Açıklama", 140, y);
-
-    y += 10;
-
-    rows.forEach((row) => {
-      doc.setDrawColor(220, 220, 220);
-      doc.rect(16, y - 7, 178, 9);
-
-      doc.setTextColor(0, 0, 0);
-      doc.text(String(row[0]), 20, y);
-
-      const color = getPdfColor(row[1]);
-      doc.setTextColor(...color);
-      doc.text(String(row[1]), 80, y);
-      doc.text(String(row[2]), 113, y);
-
-      doc.setTextColor(0, 0, 0);
-      doc.text(String(row[3]), 140, y);
-
-      y += 10;
+      theme: "grid",
+      headStyles: {
+        fillColor: [20, 36, 64],
+        textColor: [255, 255, 255]
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3
+      }
     });
 
-    doc.setFontSize(13);
-    doc.text("Otomatik Yorum", 16, 190);
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [["Olcum", "Deger"]],
+      body: [
+        ["Genel Dogruluk", "%" + metrics.accuracy],
+        ["Ortalama Tepki Suresi", metrics.avgReaction + " ms"],
+        ["Hedef Sayisi", metrics.targets],
+        ["Hedef Disi Uyaran Sayisi", metrics.nonTargets],
+        ["Dogru Hedef Yaniti", metrics.correctHits],
+        ["Kacirilan Hedef", metrics.omissions],
+        ["Gec Yanit", metrics.lateResponses],
+        ["Yanlis / Durtusel Yanit", metrics.impulsiveErrors],
+        ["Coklu Tuslama", metrics.multiPress]
+      ],
+      theme: "striped",
+      headStyles: {
+        fillColor: [55, 65, 81],
+        textColor: [255, 255, 255]
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3
+      }
+    });
+
+    const chart = chartRef.current;
+    const chartImage = chart?.canvas?.toDataURL("image/png", 1.0);
+
+    if (chartImage) {
+      doc.addPage();
+
+      doc.setFillColor(20, 36, 64);
+      doc.rect(0, 0, 210, 24, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(15);
+      doc.text("Performans Grafigi", 14, 15);
+
+      doc.setTextColor(0, 0, 0);
+      doc.addImage(chartImage, "PNG", 12, 34, 186, 95);
+    } else {
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.text("Performans Grafigi", 14, 20);
+      doc.setFontSize(10);
+      doc.text("Grafik goruntusu rapora eklenemedi.", 14, 30);
+    }
+
+    autoTable(doc, {
+      startY: 140,
+      head: [["Bolum", "Dikkat", "Zamanlama", "Durtusellik", "Hiperaktivite"]],
+      body: sections.map((s) => [
+        s.section,
+        s.attentionScore,
+        s.timingScore,
+        s.impulsivityScore,
+        s.hyperactivityScore
+      ]),
+      theme: "grid",
+      headStyles: {
+        fillColor: [20, 36, 64],
+        textColor: [255, 255, 255]
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3
+      }
+    });
+
+    doc.setFontSize(14);
+    doc.text("Otomatik Yorum", 14, doc.lastAutoTable.finalY + 16);
 
     doc.setFontSize(10);
-    doc.text(comment, 16, 200, { maxWidth: 178 });
-
-    doc.setFontSize(13);
-    doc.text("Renk Açıklaması", 16, 238);
-
-    doc.setFontSize(9);
-
-    doc.setFillColor(30, 158, 74);
-    doc.rect(16, 246, 6, 6, "F");
-    doc.text("İyi", 25, 251);
-
-    doc.setFillColor(115, 183, 43);
-    doc.rect(50, 246, 6, 6, "F");
-    doc.text("Standart", 59, 251);
-
-    doc.setFillColor(240, 160, 0);
-    doc.rect(95, 246, 6, 6, "F");
-    doc.text("Düşük", 104, 251);
-
-    doc.setFillColor(217, 48, 37);
-    doc.rect(135, 246, 6, 6, "F");
-    doc.text("Zorluk", 144, 251);
+    doc.text(comment, 14, doc.lastAutoTable.finalY + 26, { maxWidth: 182 });
 
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(90, 90, 90);
     doc.text(
-      "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
-      16,
-      276,
-      { maxWidth: 178 }
+      "Not: Bu uygulama klinik tani koymaz. Sonuclar yalnizca dikkat performansi hakkinda on bilgi saglar.",
+      14,
+      282,
+      { maxWidth: 182 }
     );
 
     doc.save("dikkat-performans-raporu.pdf");
   };
 
   const scores = calculateScores();
+  const metrics = getRawMetrics();
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#F3F6FA",
+        background: "#EEF2F7",
         fontFamily: "Arial, sans-serif",
         display: "flex",
         justifyContent: "center",
@@ -507,67 +598,72 @@ export default function App() {
         <div
           style={{
             width: "100%",
-            maxWidth: 720,
+            maxWidth: 780,
             background: "white",
-            borderRadius: 20,
-            padding: 32,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+            borderRadius: 24,
+            padding: 36,
+            boxShadow: "0 18px 50px rgba(15,23,42,0.12)",
             textAlign: "center"
           }}
         >
-          <h1>Dikkat Performans Testi</h1>
+          <h1 style={{ marginTop: 0 }}>Dikkat Performans Testi</h1>
 
-          <p>Ekranda iki farklı uyaran göreceksiniz.</p>
+          <p style={{ fontSize: 17, color: "#475569" }}>
+            Ekranda hedef ve hedef olmayan uyaranlar belirecek. Hedefi gordugunuzde
+            sadece SPACE tusuna basin.
+          </p>
 
           <div
             style={{
               display: "flex",
               gap: 20,
               justifyContent: "center",
-              marginTop: 24,
-              marginBottom: 24
+              marginTop: 28,
+              marginBottom: 28,
+              flexWrap: "wrap"
             }}
           >
             <div
               style={{
-                padding: 20,
+                padding: 22,
                 border: "2px solid #16A34A",
-                borderRadius: 16,
-                width: 180
+                borderRadius: 18,
+                width: 210
               }}
             >
-              <div style={{ fontSize: 70, color: "#16A34A" }}>●</div>
-              <strong>Hedef</strong>
-              <p>Yeşil daire görünce SPACE tuşuna bas.</p>
+              <div style={{ fontSize: 72, color: "#16A34A" }}>●</div>
+              <strong>Hedef Uyaran</strong>
+              <p>Yesil daire gorunce SPACE tusuna bas.</p>
             </div>
 
             <div
               style={{
-                padding: 20,
+                padding: 22,
                 border: "2px solid #DC2626",
-                borderRadius: 16,
-                width: 180
+                borderRadius: 18,
+                width: 210
               }}
             >
-              <div style={{ fontSize: 70, color: "#DC2626" }}>■</div>
-              <strong>Hedef Değil</strong>
-              <p>Kırmızı kare görünce basma.</p>
+              <div style={{ fontSize: 72, color: "#DC2626" }}>■</div>
+              <strong>Hedef Degil</strong>
+              <p>Kirmizi kare gorunce basma.</p>
             </div>
           </div>
 
           <button
             onClick={startTest}
             style={{
-              background: "#18365C",
+              background: "#142440",
               color: "white",
               border: "none",
-              borderRadius: 12,
-              padding: "14px 32px",
-              fontSize: 16,
-              cursor: "pointer"
+              borderRadius: 14,
+              padding: "15px 34px",
+              fontSize: 17,
+              cursor: "pointer",
+              fontWeight: "bold"
             }}
           >
-            Teste Başla
+            Teste Basla
           </button>
         </div>
       )}
@@ -576,11 +672,11 @@ export default function App() {
         <div
           style={{
             width: "100%",
-            maxWidth: 720,
-            height: 420,
+            maxWidth: 760,
+            height: 440,
             background: "white",
-            borderRadius: 20,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+            borderRadius: 24,
+            boxShadow: "0 18px 50px rgba(15,23,42,0.12)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -590,24 +686,36 @@ export default function App() {
           <div
             style={{
               position: "absolute",
-              top: 20,
-              left: 20,
-              color: "#555"
+              top: 22,
+              left: 24,
+              color: "#475569",
+              fontWeight: "bold"
             }}
           >
             Deneme: {Math.min(counter.current + 1, TOTAL_TRIALS)} /{" "}
             {TOTAL_TRIALS}
           </div>
 
+          <div
+            style={{
+              position: "absolute",
+              top: 22,
+              right: 24,
+              color: "#475569"
+            }}
+          >
+            Bolum: {getSectionName(counter.current + 1)}
+          </div>
+
           {scene === "TARGET" && (
-            <div style={{ fontSize: 120, color: "#16A34A" }}>●</div>
+            <div style={{ fontSize: 130, color: "#16A34A" }}>●</div>
           )}
 
           {scene === "OTHER" && (
-            <div style={{ fontSize: 120, color: "#DC2626" }}>■</div>
+            <div style={{ fontSize: 130, color: "#DC2626" }}>■</div>
           )}
 
-          {!scene && <div style={{ fontSize: 20, color: "#999" }}>+</div>}
+          {!scene && <div style={{ fontSize: 28, color: "#94A3B8" }}>+</div>}
         </div>
       )}
 
@@ -615,116 +723,131 @@ export default function App() {
         <div
           style={{
             width: "100%",
-            maxWidth: 900,
+            maxWidth: 980,
             background: "white",
-            borderRadius: 20,
-            padding: 32,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.08)"
+            borderRadius: 24,
+            padding: 34,
+            boxShadow: "0 18px 50px rgba(15,23,42,0.12)"
           }}
         >
-          <h1 style={{ textAlign: "center" }}>Test Tamamlandı</h1>
+          <h1 style={{ textAlign: "center", marginTop: 0 }}>Test Tamamlandi</h1>
 
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 12,
+              gap: 14,
               marginTop: 24,
-              marginBottom: 24
+              marginBottom: 22
             }}
           >
-            <div
-              style={{
-                background: getScoreColor(scores.attention),
-                color: "white",
-                padding: 16,
-                borderRadius: 12
-              }}
-            >
-              <strong>Dikkat</strong>
-              <div style={{ fontSize: 28 }}>{scores.attention}</div>
-            </div>
-
-            <div
-              style={{
-                background: getScoreColor(scores.timing),
-                color: "white",
-                padding: 16,
-                borderRadius: 12
-              }}
-            >
-              <strong>Zamanlama</strong>
-              <div style={{ fontSize: 28 }}>{scores.timing}</div>
-            </div>
-
-            <div
-              style={{
-                background: getScoreColor(scores.impulsivity),
-                color: "white",
-                padding: 16,
-                borderRadius: 12
-              }}
-            >
-              <strong>Dürtüsellik</strong>
-              <div style={{ fontSize: 28 }}>{scores.impulsivity}</div>
-            </div>
-
-            <div
-              style={{
-                background: getScoreColor(scores.hyperactivity),
-                color: "white",
-                padding: 16,
-                borderRadius: 12
-              }}
-            >
-              <strong>Hiperaktivite</strong>
-              <div style={{ fontSize: 28 }}>{scores.hyperactivity}</div>
-            </div>
+            <ScoreBox title="Dikkat" value={scores.attention} color={getScoreColor(scores.attention)} />
+            <ScoreBox title="Zamanlama" value={scores.timing} color={getScoreColor(scores.timing)} />
+            <ScoreBox title="Durtusellik" value={scores.impulsivity} color={getScoreColor(scores.impulsivity)} />
+            <ScoreBox title="Hiperaktivite" value={scores.hyperactivity} color={getScoreColor(scores.hyperactivity)} />
           </div>
 
-          <h3>Performans Grafiği</h3>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: 14,
+              marginBottom: 28
+            }}
+          >
+            <MetricBox title="Dogruluk" value={`%${metrics.accuracy}`} />
+            <MetricBox title="Ort. Tepki" value={`${metrics.avgReaction} ms`} />
+            <MetricBox title="Dogru Hedef" value={metrics.correctHits} />
+            <MetricBox title="Yanlis Yanit" value={metrics.impulsiveErrors} />
+          </div>
 
-          <div style={{ width: "100%", height: 360 }}>
-            <Line data={buildChartData()} options={buildChartOptions()} />
+          <h3>Performans Grafigi</h3>
+
+          <div style={{ width: "100%", height: 370 }}>
+            <Line
+              ref={chartRef}
+              data={buildChartData()}
+              options={buildChartOptions()}
+            />
           </div>
 
           <h3>Otomatik Yorum</h3>
-          <p>{generateSmartComment(scores)}</p>
+          <p style={{ lineHeight: 1.6 }}>
+            {generateSmartComment(scores, metrics)}
+          </p>
 
-          <div style={{ textAlign: "center", marginTop: 24 }}>
+          <div style={{ textAlign: "center", marginTop: 26 }}>
             <button
               onClick={downloadReport}
               style={{
-                background: "#18365C",
+                background: "#142440",
                 color: "white",
                 border: "none",
-                borderRadius: 12,
-                padding: "14px 32px",
+                borderRadius: 14,
+                padding: "15px 34px",
                 fontSize: 16,
-                cursor: "pointer"
+                cursor: "pointer",
+                fontWeight: "bold"
               }}
             >
-              PDF Raporu İndir
+              Profesyonel PDF Raporu Indir
             </button>
 
             <button
-              onClick={() => setView("START")}
+              onClick={startTest}
               style={{
                 marginLeft: 12,
                 background: "#E5E7EB",
                 color: "#111827",
                 border: "none",
-                borderRadius: 12,
-                padding: "14px 32px",
+                borderRadius: 14,
+                padding: "15px 34px",
                 fontSize: 16,
                 cursor: "pointer"
               }}
             >
-              Yeni Test Başlat
+              Yeni Test Baslat
             </button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ScoreBox({ title, value, color }) {
+  return (
+    <div
+      style={{
+        background: color,
+        color: "white",
+        padding: 18,
+        borderRadius: 16
+      }}
+    >
+      <strong>{title}</strong>
+      <div style={{ fontSize: 30, fontWeight: "bold", marginTop: 6 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function MetricBox({ title, value }) {
+  return (
+    <div
+      style={{
+        background: "#F1F5F9",
+        color: "#0F172A",
+        padding: 16,
+        borderRadius: 16,
+        border: "1px solid #E2E8F0"
+      }}
+    >
+      <strong>{title}</strong>
+      <div style={{ fontSize: 24, fontWeight: "bold", marginTop: 6 }}>
+        {value}
+      </div>
     </div>
   );
 }
