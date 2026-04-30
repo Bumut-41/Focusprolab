@@ -231,37 +231,45 @@ export default function App() {
     return areas.filter((area) => !usedAreas.includes(area));
   };
 
-  const createGifPosition = (area, file) => {
-    const verticalZones = [
-      { name: "upper", top: 25 },
-      { name: "middle", top: 50 },
-      { name: "lower", top: 75 }
-    ];
+ // SADECE BU FONKSİYON DEĞİŞTİ — geri kalan kod aynı kalabilir
+// Senin sisteminde createGifPosition fonksiyonunu bununla değiştir
 
-    const selectedVerticalZone = randomItem(verticalZones);
+const createGifPosition = (area, file) => {
+  const zones = ["upper", "middle", "lower"];
+  const selectedZone = randomItem(zones);
 
-    let left = area === "left" ? 24 : 76;
-    let top = selectedVerticalZone.top;
+  let top;
 
-    if (area === "right" && (file.name === "Araba" || file.name === "Araba Korna")) {
-      left = 79;
-      top = Math.max(22, top - 5);
+  if (selectedZone === "upper") top = 25;
+  if (selectedZone === "middle") top = 50;
+  if (selectedZone === "lower") top = 75;
+
+  // SAĞ - SOL KENARA YAKIN
+  let left = area === "left" ? 8 : 92;
+
+  // 👉 AKILLI HİZALAMA
+  const otherGif = gifDistractorsRef.current.find(g => g.area !== area);
+
+  if (otherGif) {
+    // Eğer aynı bölgedelerse birebir hizala
+    const sameZone =
+      (otherGif.top < 35 && selectedZone === "upper") ||
+      (otherGif.top >= 35 && otherGif.top <= 65 && selectedZone === "middle") ||
+      (otherGif.top > 65 && selectedZone === "lower");
+
+    if (sameZone) {
+      top = otherGif.top;
     }
+  }
 
-    if (area === "left" && file.name === "Ağaç") {
-      left = 24;
-    }
+  // 👉 ÖZEL İNCE AYARLAR
+  if (area === "right" && (file.name === "Araba" || file.name === "Araba Korna")) {
+    left = 94;     // daha sağa
+    top = top - 3; // biraz yukarı
+  }
 
-    if (selectedVerticalZone.name === "upper") {
-      top = Math.max(22, top);
-    }
-
-    if (selectedVerticalZone.name === "lower") {
-      top = Math.min(78, top);
-    }
-
-    return { left, top, area };
-  };
+  return { left, top, area };
+};
 
   const stopGifAudio = (id) => {
     const audio = activeAudios.current[id];
