@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
 import { Line } from "react-chartjs-2";
@@ -14,13 +14,27 @@ import {
 
 pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
 
-ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
+ChartJS.register(
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Legend,
+  Tooltip
+);
 
-const TOTAL_TRIALS = 48;
-const TARGET_COUNT = 18;
-const STIMULUS_DURATION = 900;
-const GAP_DURATION = 500;
-const LATE_RESPONSE_MS = 800;
+const SHAPES = [
+  { id: "circle", label: "Daire" },
+  { id: "square", label: "Kare" },
+  { id: "triangle", label: "Üçgen" },
+  { id: "diamond", label: "Elmas" },
+  { id: "pentagon", label: "Beşgen" },
+  { id: "hexagon", label: "Altıgen" },
+  { id: "vertical", label: "Dikey Dikdörtgen" },
+  { id: "horizontal", label: "Yatay Dikdörtgen" },
+  { id: "plus", label: "Artı" },
+  { id: "xshape", label: "Çarpı" }
+];
 
 const COLORS = [
   "#2563EB",
@@ -30,29 +44,65 @@ const COLORS = [
   "#7C3AED",
   "#0891B2",
   "#DB2777",
-  "#EA580C"
+  "#65A30D",
+  "#EA580C",
+  "#0F172A"
 ];
 
-const SHAPES = [
-  { id: "circle", label: "Daire" },
-  { id: "square", label: "Kare" },
-  { id: "triangle", label: "Üçgen" },
-  { id: "diamond", label: "Elmas" },
-  { id: "plus", label: "Artı" },
-  { id: "xshape", label: "Çarpı" }
+const DISTRACTOR_FILES = [
+  {
+    name: "Top",
+    gif: "/distractors/top.gif",
+    sound: "/distractors/top.mp3"
+  },
+  {
+    name: "Polis",
+    gif: "/distractors/polis.gif",
+    sound: "/distractors/polis.mp3"
+  },
+  {
+    name: "Koşan İnsan",
+    gif: "/distractors/kosan.gif",
+    sound: "/distractors/kosan.mp3"
+  },
+  {
+    name: "Köpek",
+    gif: "/distractors/kopek.gif",
+    sound: "/distractors/kopek.mp3"
+  },
+  {
+    name: "Kedi",
+    gif: "/distractors/kedi.gif",
+    sound: "/distractors/kedi.mp3"
+  },
+  {
+    name: "Araba",
+    gif: "/distractors/araba.gif",
+    sound: "/distractors/araba.mp3"
+  },
+  {
+    name: "Ağaç",
+    gif: "/distractors/agac.gif",
+    sound: "/distractors/agac.mp3"
+  }
 ];
 
-const DISTRACTOR_TYPES = [
-  { label: "Polis Arabası", icon: "🚓", sound: "siren" },
-  { label: "Köpek", icon: "🐕", sound: "dog" },
-  { label: "Kedi", icon: "🐈", sound: "cat" },
-  { label: "Kuş", icon: "🐦", sound: "bird" },
-  { label: "Top", icon: "🏀", sound: "bounce" },
-  { label: "Koşan İnsan", icon: "🏃", sound: "step" }
-];
+const TOTAL_TRIALS = 40;
+const TARGET_COUNT = 16;
+const STIMULUS_DURATION = 1000;
+const GAP_DURATION = 500;
+const LATE_RESPONSE_MS = 800;
 
 function randomItem(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randomDuration() {
+  return 5000 + Math.floor(Math.random() * 15000);
+}
+
+function randomDelay() {
+  return 1000 + Math.floor(Math.random() * 1000);
 }
 
 function shuffleArray(array) {
@@ -99,9 +149,66 @@ function ShapeView({ shape, color, size = 120 }) {
     );
   }
 
+  if (shape === "pentagon") {
+    return (
+      <div
+        style={{
+          ...base,
+          clipPath:
+            "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)"
+        }}
+      />
+    );
+  }
+
+  if (shape === "hexagon") {
+    return (
+      <div
+        style={{
+          ...base,
+          clipPath:
+            "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)"
+        }}
+      />
+    );
+  }
+
+  if (shape === "vertical") {
+    return (
+      <div
+        style={{
+          width: size * 0.45,
+          height: size,
+          background: color,
+          display: "inline-block"
+        }}
+      />
+    );
+  }
+
+  if (shape === "horizontal") {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size * 0.45,
+          background: color,
+          display: "inline-block"
+        }}
+      />
+    );
+  }
+
   if (shape === "plus") {
     return (
-      <div style={{ width: size, height: size, position: "relative" }}>
+      <div
+        style={{
+          width: size,
+          height: size,
+          position: "relative",
+          display: "inline-block"
+        }}
+      >
         <div
           style={{
             position: "absolute",
@@ -128,7 +235,14 @@ function ShapeView({ shape, color, size = 120 }) {
 
   if (shape === "xshape") {
     return (
-      <div style={{ width: size, height: size, position: "relative" }}>
+      <div
+        style={{
+          width: size,
+          height: size,
+          position: "relative",
+          display: "inline-block"
+        }}
+      >
         <div
           style={{
             position: "absolute",
@@ -160,11 +274,11 @@ function ShapeView({ shape, color, size = 120 }) {
 
 function getShapeSvg(shape, color) {
   if (shape === "circle") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="${color}"/></svg>`;
+    return `<svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="35" fill="${color}"/></svg>`;
   }
 
   if (shape === "square") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="14" y="14" width="52" height="52" fill="${color}"/></svg>`;
+    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="12" y="12" width="56" height="56" fill="${color}"/></svg>`;
   }
 
   if (shape === "triangle") {
@@ -173,6 +287,22 @@ function getShapeSvg(shape, color) {
 
   if (shape === "diamond") {
     return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,40 40,74 6,40" fill="${color}"/></svg>`;
+  }
+
+  if (shape === "pentagon") {
+    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,32 61,72 19,72 6,32" fill="${color}"/></svg>`;
+  }
+
+  if (shape === "hexagon") {
+    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="22,8 58,8 74,40 58,72 22,72 6,40" fill="${color}"/></svg>`;
+  }
+
+  if (shape === "vertical") {
+    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="28" y="6" width="24" height="68" fill="${color}"/></svg>`;
+  }
+
+  if (shape === "horizontal") {
+    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="6" y="28" width="68" height="24" fill="${color}"/></svg>`;
   }
 
   if (shape === "plus") {
@@ -184,21 +314,23 @@ function getShapeSvg(shape, color) {
 
 export default function App() {
   const [view, setView] = useState("START");
-  const [target, setTarget] = useState(null);
   const [scene, setScene] = useState(null);
-  const [distractors, setDistractors] = useState([]);
+  const [target, setTarget] = useState(null);
+  const [gifDistractors, setGifDistractors] = useState([]);
 
   const targetRef = useRef(null);
-  const currentTrial = useRef(null);
   const trialLog = useRef([]);
-  const trialPlan = useRef([]);
+  const currentTrial = useRef(null);
   const counter = useRef(0);
   const timer = useRef(null);
+  const gifTimer = useRef(null);
   const chartRef = useRef(null);
+  const trialPlan = useRef([]);
   const lastInputTime = useRef(0);
-  const audioContextRef = useRef(null);
+  const activeAudios = useRef({});
+  const activeSoundId = useRef(null);
 
-  const createTarget = () => {
+  const createNewTarget = () => {
     const newTarget = {
       shape: randomItem(SHAPES).id,
       color: randomItem(COLORS)
@@ -208,174 +340,153 @@ export default function App() {
     setTarget(newTarget);
   };
 
-  useEffect(() => {
-    createTarget();
+  const createGifPosition = () => {
+    let left;
+    let top;
 
-    return () => {
-      clearTimeout(timer.current);
+    do {
+      left = 5 + Math.random() * 90;
+      top = 8 + Math.random() * 84;
+    } while (left > 34 && left < 66);
+
+    return { left, top };
+  };
+
+  const stopGifAudio = (id) => {
+    const audio = activeAudios.current[id];
+
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      delete activeAudios.current[id];
+    }
+
+    if (activeSoundId.current === id) {
+      activeSoundId.current = null;
+    }
+  };
+
+  const stopAllGifAudio = () => {
+    Object.keys(activeAudios.current).forEach((id) => {
+      activeAudios.current[id].pause();
+      activeAudios.current[id].currentTime = 0;
+    });
+
+    activeAudios.current = {};
+    activeSoundId.current = null;
+  };
+
+  const removeGifDistractor = (id) => {
+    stopGifAudio(id);
+    setGifDistractors((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const addGifDistractor = ({ forceSilent = false } = {}) => {
+    const file = randomItem(DISTRACTOR_FILES);
+    const id = String(Date.now() + Math.random());
+    const duration = randomDuration();
+    const position = createGifPosition();
+
+    const canBeSound =
+      !forceSilent &&
+      file.sound &&
+      activeSoundId.current === null &&
+      Math.random() > 0.45;
+
+    const item = {
+      id,
+      name: file.name,
+      gif: file.gif,
+      sound: canBeSound ? file.sound : null,
+      duration,
+      left: position.left,
+      top: position.top,
+      size: 95 + Math.floor(Math.random() * 45)
     };
-  }, []);
 
-  const initAudio = () => {
-    if (!audioContextRef.current) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        audioContextRef.current = new AudioContext();
+    setGifDistractors((prev) => {
+      const next = [...prev, item];
+      return next.slice(-2);
+    });
+
+    if (item.sound) {
+      const audio = new Audio(item.sound);
+      audio.loop = true;
+      audio.volume = 0.55;
+      activeAudios.current[id] = audio;
+      activeSoundId.current = id;
+
+      audio.play().catch(() => {});
+    }
+
+    setTimeout(() => {
+      removeGifDistractor(id);
+    }, duration);
+
+    return item;
+  };
+
+  const scheduleGifDistractor = () => {
+    if (view !== "PLAY") return;
+
+    const shouldShow = Math.random() > 0.25;
+
+    if (shouldShow) {
+      const firstWillTrySound = activeSoundId.current === null && Math.random() > 0.45;
+
+      addGifDistractor({ forceSilent: !firstWillTrySound });
+
+      const shouldAddSilentAfter = Math.random() > 0.45;
+
+      if (shouldAddSilentAfter) {
+        setTimeout(() => {
+          if (view === "PLAY") {
+            addGifDistractor({ forceSilent: true });
+          }
+        }, randomDelay());
       }
     }
 
-    if (audioContextRef.current?.state === "suspended") {
-      audioContextRef.current.resume();
-    }
+    const nextDelay = 3000 + Math.floor(Math.random() * 4000);
+
+    gifTimer.current = setTimeout(scheduleGifDistractor, nextDelay);
   };
 
-  const playSound = (soundType) => {
-    const ctx = audioContextRef.current;
-    if (!ctx || soundType === "none") return;
-
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    if (soundType === "siren") {
-      oscillator.type = "sawtooth";
-      oscillator.frequency.setValueAtTime(650, ctx.currentTime);
-      oscillator.frequency.linearRampToValueAtTime(1100, ctx.currentTime + 0.25);
-    } else if (soundType === "dog") {
-      oscillator.type = "square";
-      oscillator.frequency.value = 180;
-    } else if (soundType === "cat") {
-      oscillator.type = "triangle";
-      oscillator.frequency.value = 720;
-    } else if (soundType === "bird") {
-      oscillator.type = "sine";
-      oscillator.frequency.value = 1300;
-    } else if (soundType === "bounce") {
-      oscillator.type = "sine";
-      oscillator.frequency.value = 280;
-    } else {
-      oscillator.type = "sine";
-      oscillator.frequency.value = 220;
-    }
-
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 0.38);
+  const startGifSystem = () => {
+    clearTimeout(gifTimer.current);
+    gifTimer.current = setTimeout(scheduleGifDistractor, 1200);
   };
 
-  const createTrialPlan = () => {
-    const targets = Array.from({ length: TARGET_COUNT }, () => true);
-    const nonTargets = Array.from({ length: TOTAL_TRIALS - TARGET_COUNT }, () => false);
-    trialPlan.current = shuffleArray([...targets, ...nonTargets]);
+  const stopGifSystem = () => {
+    clearTimeout(gifTimer.current);
+    setGifDistractors([]);
+    stopAllGifAudio();
   };
 
-  const createNonTargetObject = () => {
-    const currentTargetValue = targetRef.current;
-    let object;
+  useEffect(() => {
+    createNewTarget();
 
-    do {
-      object = {
-        shape: randomItem(SHAPES).id,
-        color: randomItem(COLORS)
-      };
-    } while (
-      object.shape === currentTargetValue.shape &&
-      object.color === currentTargetValue.color
-    );
-
-    return object;
-  };
-
-  const createDistractorsForTrial = () => {
-    const modeRandom = Math.random();
-
-    let visualCount = 0;
-    let soundCount = 0;
-
-    if (modeRandom < 0.35) {
-      visualCount = 0;
-      soundCount = 0;
-    } else if (modeRandom < 0.6) {
-      visualCount = 1 + Math.floor(Math.random() * 3);
-    } else if (modeRandom < 0.8) {
-      soundCount = 1;
-    } else {
-      visualCount = 1 + Math.floor(Math.random() * 3);
-      soundCount = 1;
-    }
-
-    const positions = [
-      { left: 12, top: 20 },
-      { left: 84, top: 22 },
-      { left: 14, top: 78 },
-      { left: 82, top: 76 },
-      { left: 50, top: 13 },
-      { left: 50, top: 87 }
-    ];
-
-    const selectedPositions = shuffleArray(positions).slice(0, visualCount);
-
-    const visualItems = selectedPositions.map((position, index) => {
-      const type = randomItem(DISTRACTOR_TYPES);
-
-      return {
-        id: `${Date.now()}-${index}`,
-        ...type,
-        left: position.left,
-        top: position.top,
-        size: 46 + Math.floor(Math.random() * 16)
-      };
-    });
-
-    const soundItems = Array.from({ length: soundCount }).map(() =>
-      randomItem(DISTRACTOR_TYPES)
-    );
-
-    return {
-      visualItems,
-      soundItems
+    return () => {
+      clearTimeout(timer.current);
+      clearTimeout(gifTimer.current);
+      stopAllGifAudio();
     };
-  };
+  }, []);
 
-  const getSectionName = (trialNumber) => {
-    if (trialNumber <= 12) return "Temel";
-    if (trialNumber <= 24) return "Görsel";
-    if (trialNumber <= 36) return "İşitsel";
-    return "Kombine";
-  };
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        registerResponse();
+      }
+    };
 
-  const startTest = () => {
-    initAudio();
+    window.addEventListener("keydown", handleKeyDown);
 
-    trialLog.current = [];
-    currentTrial.current = null;
-    counter.current = 0;
-    lastInputTime.current = 0;
-
-    setScene(null);
-    setDistractors([]);
-    createTrialPlan();
-    setView("PLAY");
-  };
-
-  const newTest = () => {
-    clearTimeout(timer.current);
-
-    trialLog.current = [];
-    currentTrial.current = null;
-    counter.current = 0;
-    lastInputTime.current = 0;
-
-    setScene(null);
-    setDistractors([]);
-    createTarget();
-    setView("START");
-  };
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const registerResponse = () => {
     const now = performance.now();
@@ -384,6 +495,72 @@ export default function App() {
 
     lastInputTime.current = now;
     handleResponse();
+  };
+
+  const createTrialPlan = () => {
+    const targets = Array.from({ length: TARGET_COUNT }, () => true);
+    const nonTargets = Array.from(
+      { length: TOTAL_TRIALS - TARGET_COUNT },
+      () => false
+    );
+
+    trialPlan.current = shuffleArray([...targets, ...nonTargets]);
+  };
+
+  const getSectionName = (trialNumber) => {
+    if (trialNumber <= 10) return "Temel";
+    if (trialNumber <= 20) return "Görsel";
+    if (trialNumber <= 30) return "İşitsel";
+    return "Kombine";
+  };
+
+  const createNonTargetObject = () => {
+    const currentTarget = targetRef.current;
+    let obj;
+
+    do {
+      obj = {
+        shape: randomItem(SHAPES).id,
+        color: randomItem(COLORS)
+      };
+    } while (
+      obj.shape === currentTarget.shape &&
+      obj.color === currentTarget.color
+    );
+
+    return obj;
+  };
+
+  const startTest = () => {
+    trialLog.current = [];
+    currentTrial.current = null;
+    counter.current = 0;
+    lastInputTime.current = 0;
+
+    setScene(null);
+    setGifDistractors([]);
+    stopAllGifAudio();
+
+    createTrialPlan();
+    setView("PLAY");
+
+    setTimeout(() => {
+      startGifSystem();
+    }, 500);
+  };
+
+  const newTest = () => {
+    clearTimeout(timer.current);
+    stopGifSystem();
+
+    trialLog.current = [];
+    currentTrial.current = null;
+    counter.current = 0;
+    lastInputTime.current = 0;
+
+    setScene(null);
+    createNewTarget();
+    setView("START");
   };
 
   const handleResponse = () => {
@@ -400,35 +577,19 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    const keyHandler = (event) => {
-      if (event.code === "Space") {
-        event.preventDefault();
-        registerResponse();
-      }
-    };
-
-    window.addEventListener("keydown", keyHandler);
-
-    return () => {
-      window.removeEventListener("keydown", keyHandler);
-    };
-  }, []);
-
   const nextTrial = () => {
     if (counter.current >= TOTAL_TRIALS) {
       currentTrial.current = null;
       setScene(null);
-      setDistractors([]);
+      stopGifSystem();
       setView("END");
       return;
     }
 
     const trialNumber = counter.current + 1;
     const isTarget = trialPlan.current[counter.current];
-    const currentTargetValue = targetRef.current;
-    const shownObject = isTarget ? { ...currentTargetValue } : createNonTargetObject();
-    const distractorData = createDistractorsForTrial();
+    const currentTarget = targetRef.current;
+    const shownObject = isTarget ? { ...currentTarget } : createNonTargetObject();
 
     currentTrial.current = {
       trialNumber,
@@ -436,10 +597,8 @@ export default function App() {
       isTarget,
       shownShape: shownObject.shape,
       shownColor: shownObject.color,
-      targetShape: currentTargetValue.shape,
-      targetColor: currentTargetValue.color,
-      visualDistractorCount: distractorData.visualItems.length,
-      soundDistractorCount: distractorData.soundItems.length,
+      targetShape: currentTarget.shape,
+      targetColor: currentTarget.color,
       responded: false,
       reactionTime: 0,
       responses: [],
@@ -452,32 +611,23 @@ export default function App() {
       isTarget
     });
 
-    setDistractors(distractorData.visualItems);
-
-    distractorData.soundItems.forEach((item, index) => {
-      setTimeout(() => playSound(item.sound), index * 220);
-    });
-
     timer.current = setTimeout(() => {
       setScene(null);
-      setDistractors([]);
 
-      const trial = currentTrial.current;
+      const t = currentTrial.current;
 
-      if (trial) {
+      if (t) {
         trialLog.current.push({
-          trialNumber: trial.trialNumber,
-          section: trial.section,
-          isTarget: trial.isTarget,
-          shownShape: trial.shownShape,
-          shownColor: trial.shownColor,
-          targetShape: trial.targetShape,
-          targetColor: trial.targetColor,
-          visualDistractorCount: trial.visualDistractorCount,
-          soundDistractorCount: trial.soundDistractorCount,
-          responded: trial.responded,
-          reactionTime: trial.reactionTime || 0,
-          responseCount: trial.responses.length
+          trialNumber: t.trialNumber,
+          section: t.section,
+          isTarget: t.isTarget,
+          shownShape: t.shownShape,
+          shownColor: t.shownColor,
+          targetShape: t.targetShape,
+          targetColor: t.targetColor,
+          responded: t.responded,
+          reactionTime: t.reactionTime || 0,
+          responseCount: t.responses.length
         });
       }
 
@@ -492,29 +642,26 @@ export default function App() {
       nextTrial();
     }
 
-    return () => {
-      clearTimeout(timer.current);
-    };
+    return () => clearTimeout(timer.current);
   }, [view]);
 
   const getRawMetrics = () => {
     const logs = trialLog.current;
+    const targets = logs.filter((t) => t.isTarget);
+    const nonTargets = logs.filter((t) => !t.isTarget);
 
-    const targets = logs.filter((item) => item.isTarget);
-    const nonTargets = logs.filter((item) => !item.isTarget);
-
-    const correctHits = targets.filter((item) => item.responded);
-    const omissions = targets.filter((item) => !item.responded);
+    const correctHits = targets.filter((t) => t.responded);
+    const omissions = targets.filter((t) => !t.responded);
     const lateResponses = targets.filter(
-      (item) => item.responded && item.reactionTime > LATE_RESPONSE_MS
+      (t) => t.responded && t.reactionTime > LATE_RESPONSE_MS
     );
-    const impulsiveErrors = nonTargets.filter((item) => item.responded);
-    const multiPress = logs.filter((item) => item.responseCount > 1);
+    const impulsiveErrors = nonTargets.filter((t) => t.responded);
+    const multiPress = logs.filter((t) => t.responseCount > 1);
 
     const avgReaction =
       correctHits.length > 0
         ? Math.round(
-            correctHits.reduce((sum, item) => sum + item.reactionTime, 0) /
+            correctHits.reduce((sum, t) => sum + t.reactionTime, 0) /
               correctHits.length
           )
         : 0;
@@ -523,19 +670,11 @@ export default function App() {
       logs.length > 0
         ? Math.round(
             ((correctHits.length +
-              nonTargets.filter((item) => !item.responded).length) /
+              nonTargets.filter((t) => !t.responded).length) /
               logs.length) *
               100
           )
         : 0;
-
-    const visualDistractorTrials = logs.filter(
-      (item) => item.visualDistractorCount > 0
-    ).length;
-
-    const soundDistractorTrials = logs.filter(
-      (item) => item.soundDistractorCount > 0
-    ).length;
 
     return {
       totalTrials: logs.length,
@@ -547,20 +686,18 @@ export default function App() {
       impulsiveErrors: impulsiveErrors.length,
       multiPress: multiPress.length,
       avgReaction,
-      accuracy,
-      visualDistractorTrials,
-      soundDistractorTrials
+      accuracy
     };
   };
 
   const calculateScores = () => {
-    const metrics = getRawMetrics();
+    const m = getRawMetrics();
 
     return {
-      attention: metrics.omissions,
-      timing: metrics.lateResponses,
-      impulsivity: metrics.impulsiveErrors,
-      hyperactivity: metrics.multiPress
+      attention: m.omissions,
+      timing: m.lateResponses,
+      impulsivity: m.impulsiveErrors,
+      hyperactivity: m.multiPress
     };
   };
 
@@ -692,14 +829,14 @@ export default function App() {
     const sections = ["Temel", "Görsel", "İşitsel", "Kombine"];
 
     return sections.map((section) => {
-      const list = trialLog.current.filter((item) => item.section === section);
+      const list = trialLog.current.filter((t) => t.section === section);
 
-      const omissions = list.filter((item) => item.isTarget && !item.responded).length;
+      const omissions = list.filter((t) => t.isTarget && !t.responded).length;
       const late = list.filter(
-        (item) => item.isTarget && item.responded && item.reactionTime > LATE_RESPONSE_MS
+        (t) => t.isTarget && t.responded && t.reactionTime > LATE_RESPONSE_MS
       ).length;
-      const impulse = list.filter((item) => !item.isTarget && item.responded).length;
-      const hyper = list.filter((item) => item.responseCount > 1).length;
+      const impulse = list.filter((t) => !t.isTarget && t.responded).length;
+      const hyper = list.filter((t) => t.responseCount > 1).length;
 
       return {
         section,
@@ -719,7 +856,7 @@ export default function App() {
     );
 
     comments.push(
-      `${metrics.visualDistractorTrials} denemede görsel dikkat dağıtıcı, ${metrics.soundDistractorTrials} denemede sesli dikkat dağıtıcı kullanıldı.`
+      "Test sırasında ana hedef uyaranlardan bağımsız olarak görsel ve zaman zaman sesli dikkat dağıtıcı GIF uyaranları kullanıldı."
     );
 
     if (scores.attention >= 6) {
@@ -733,7 +870,9 @@ export default function App() {
     if (scores.timing >= 6) {
       comments.push("Zamanlama alanında belirgin gecikme vardır.");
     } else if (scores.timing >= 3) {
-      comments.push("Zamanlama performansında hafif-orta düzeyde gecikmeler görülmüştür.");
+      comments.push(
+        "Zamanlama performansında hafif-orta düzeyde gecikmeler görülmüştür."
+      );
     } else {
       comments.push("Zamanlama becerisi genel olarak yeterli görünmektedir.");
     }
@@ -749,7 +888,9 @@ export default function App() {
     if (scores.hyperactivity >= 6) {
       comments.push("Motor yanıt kontrolünde belirgin düzensizlik vardır.");
     } else if (scores.hyperactivity >= 3) {
-      comments.push("Motor yanıt kontrolünde zaman zaman düzensizlik görülmüştür.");
+      comments.push(
+        "Motor yanıt kontrolünde zaman zaman düzensizlik görülmüştür."
+      );
     } else {
       comments.push("Motor yanıt kontrolü genel olarak düzenlidir.");
     }
@@ -768,10 +909,7 @@ export default function App() {
     const docDefinition = {
       pageSize: "A4",
       pageMargins: [36, 36, 36, 36],
-      defaultStyle: {
-        font: "Roboto",
-        fontSize: 10
-      },
+      defaultStyle: { font: "Roboto", fontSize: 10 },
       content: [
         {
           text: "Dikkat Performans Raporu",
@@ -791,11 +929,20 @@ export default function App() {
             {
               width: "*",
               stack: [
-                { text: "Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR") },
-                { text: "Test Tipi: Videodaki gibi temiz hedef uyaran görevi", margin: [0, 6, 0, 0] },
-                { text: "Toplam Deneme: " + TOTAL_TRIALS, margin: [0, 6, 0, 0] },
-                { text: "Görsel Dikkat Dağıtıcı Deneme: " + metrics.visualDistractorTrials, margin: [0, 6, 0, 0] },
-                { text: "Sesli Dikkat Dağıtıcı Deneme: " + metrics.soundDistractorTrials, margin: [0, 6, 0, 0] }
+                {
+                  text:
+                    "Rapor Tarihi: " +
+                    new Date().toLocaleDateString("tr-TR")
+                },
+                {
+                  text:
+                    "Test Tipi: GIF destekli hedef / hedef dışı uyaran görevi",
+                  margin: [0, 6, 0, 0]
+                },
+                {
+                  text: "Toplam Deneme: " + TOTAL_TRIALS,
+                  margin: [0, 6, 0, 0]
+                }
               ]
             },
             {
@@ -827,8 +974,19 @@ export default function App() {
                 [
                   {
                     stack: [
-                      { text: title, color: "white", bold: true, fontSize: 11 },
-                      { text: String(value), color: "white", bold: true, fontSize: 22, margin: [0, 8, 0, 0] }
+                      {
+                        text: title,
+                        color: "white",
+                        bold: true,
+                        fontSize: 11
+                      },
+                      {
+                        text: String(value),
+                        color: "white",
+                        bold: true,
+                        fontSize: 22,
+                        margin: [0, 8, 0, 0]
+                      }
                     ],
                     fillColor: getScoreColor(value),
                     margin: [10, 10, 10, 10]
@@ -853,14 +1011,39 @@ export default function App() {
                 { text: "Seviye", bold: true, color: "white" },
                 { text: "Yorum", bold: true, color: "white" }
               ],
-              ["A - Dikkat", scores.attention, getLevel(scores.attention), getLevelText(scores.attention)],
-              ["T - Zamanlama", scores.timing, getLevel(scores.timing), getLevelText(scores.timing)],
-              ["I - Dürtüsellik", scores.impulsivity, getLevel(scores.impulsivity), getLevelText(scores.impulsivity)],
-              ["H - Hiperaktivite", scores.hyperactivity, getLevel(scores.hyperactivity), getLevelText(scores.hyperactivity)]
+              [
+                "A - Dikkat",
+                scores.attention,
+                getLevel(scores.attention),
+                getLevelText(scores.attention)
+              ],
+              [
+                "T - Zamanlama",
+                scores.timing,
+                getLevel(scores.timing),
+                getLevelText(scores.timing)
+              ],
+              [
+                "I - Dürtüsellik",
+                scores.impulsivity,
+                getLevel(scores.impulsivity),
+                getLevelText(scores.impulsivity)
+              ],
+              [
+                "H - Hiperaktivite",
+                scores.hyperactivity,
+                getLevel(scores.hyperactivity),
+                getLevelText(scores.hyperactivity)
+              ]
             ]
           },
           layout: {
-            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) =>
+              rowIndex === 0
+                ? "#142440"
+                : rowIndex % 2 === 0
+                ? "#F8FAFC"
+                : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           },
@@ -887,7 +1070,12 @@ export default function App() {
             ]
           },
           layout: {
-            fillColor: (rowIndex) => rowIndex === 0 ? "#374151" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) =>
+              rowIndex === 0
+                ? "#374151"
+                : rowIndex % 2 === 0
+                ? "#F8FAFC"
+                : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           }
@@ -924,7 +1112,12 @@ export default function App() {
             ]
           },
           layout: {
-            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            fillColor: (rowIndex) =>
+              rowIndex === 0
+                ? "#142440"
+                : rowIndex % 2 === 0
+                ? "#F8FAFC"
+                : null,
             hLineColor: () => "#CBD5E1",
             vLineColor: () => "#CBD5E1"
           },
@@ -943,14 +1136,17 @@ export default function App() {
           margin: [0, 0, 0, 40]
         },
         {
-          text: "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
+          text:
+            "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
           fontSize: 8,
           color: "#64748B"
         }
       ]
     };
 
-    pdfMake.createPdf(docDefinition).download("dikkat-performans-raporu.pdf");
+    pdfMake
+      .createPdf(docDefinition)
+      .download("dikkat-performans-raporu.pdf");
   };
 
   const scores = calculateScores();
@@ -960,7 +1156,7 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#EEF2F7",
+        background: "#FFFFFF",
         fontFamily: "Arial, sans-serif",
         display: "flex",
         justifyContent: "center",
@@ -972,7 +1168,7 @@ export default function App() {
         <div
           style={{
             width: "100%",
-            maxWidth: 760,
+            maxWidth: 900,
             background: "white",
             borderRadius: 24,
             padding: 36,
@@ -983,8 +1179,10 @@ export default function App() {
           <h1 style={{ marginTop: 0 }}>Dikkat Performans Testi</h1>
 
           <p style={{ fontSize: 17, color: "#475569" }}>
-            Aşağıdaki nesne hedef olarak seçildi. Test boyunca sadece bu şekil ve bu renk birlikte göründüğünde SPACE tuşuna basın.
-            Mouse ile tıklama ve dokunmatik ekranlarda dokunma da cevap olarak kabul edilir.
+            Aşağıdaki nesne hedef olarak seçildi. Test boyunca sadece bu şekil
+            ve bu renk birlikte göründüğünde SPACE tuşuna basın. Mouse ile
+            tıklama ve dokunmatik ekranlarda dokunma da cevap olarak kabul
+            edilir.
           </p>
 
           <div
@@ -1027,10 +1225,11 @@ export default function App() {
           onClick={registerResponse}
           onTouchStart={registerResponse}
           style={{
-            width: "100%",
-            maxWidth: 760,
-            height: 440,
-            background: "white",
+            width: "96vw",
+            maxWidth: 1180,
+            height: "78vh",
+            minHeight: 560,
+            background: "#FFFFFF",
             borderRadius: 24,
             boxShadow: "0 18px 50px rgba(15,23,42,0.12)",
             display: "flex",
@@ -1043,27 +1242,31 @@ export default function App() {
             userSelect: "none"
           }}
         >
-          {distractors.map((item) => (
-            <div
+          {gifDistractors.map((item) => (
+            <img
               key={item.id}
+              src={item.gif}
+              alt={item.name}
               style={{
                 position: "absolute",
                 left: `${item.left}%`,
                 top: `${item.top}%`,
+                width: item.size,
+                height: "auto",
                 transform: "translate(-50%, -50%)",
-                fontSize: item.size,
-                zIndex: 1,
                 pointerEvents: "none",
-                opacity: 0.9
+                zIndex: 1
               }}
-            >
-              {item.icon}
-            </div>
+            />
           ))}
 
           {scene && (
-            <div style={{ zIndex: 2 }}>
-              <ShapeView shape={scene.shape} color={scene.color} size={150} />
+            <div style={{ zIndex: 5 }}>
+              <ShapeView
+                shape={scene.shape}
+                color={scene.color}
+                size={170}
+              />
             </div>
           )}
         </div>
@@ -1084,9 +1287,12 @@ export default function App() {
 
           <div style={{ textAlign: "center", marginBottom: 20 }}>
             <strong>Hedef Nesne:</strong>
-
             <div style={{ marginTop: 12 }}>
-              <ShapeView shape={target.shape} color={target.color} size={60} />
+              <ShapeView
+                shape={target.shape}
+                color={target.color}
+                size={60}
+              />
             </div>
           </div>
 
@@ -1099,10 +1305,26 @@ export default function App() {
               marginBottom: 22
             }}
           >
-            <ScoreBox title="Dikkat" value={scores.attention} color={getScoreColor(scores.attention)} />
-            <ScoreBox title="Zamanlama" value={scores.timing} color={getScoreColor(scores.timing)} />
-            <ScoreBox title="Dürtüsellik" value={scores.impulsivity} color={getScoreColor(scores.impulsivity)} />
-            <ScoreBox title="Hiperaktivite" value={scores.hyperactivity} color={getScoreColor(scores.hyperactivity)} />
+            <ScoreBox
+              title="Dikkat"
+              value={scores.attention}
+              color={getScoreColor(scores.attention)}
+            />
+            <ScoreBox
+              title="Zamanlama"
+              value={scores.timing}
+              color={getScoreColor(scores.timing)}
+            />
+            <ScoreBox
+              title="Dürtüsellik"
+              value={scores.impulsivity}
+              color={getScoreColor(scores.impulsivity)}
+            />
+            <ScoreBox
+              title="Hiperaktivite"
+              value={scores.hyperactivity}
+              color={getScoreColor(scores.hyperactivity)}
+            />
           </div>
 
           <div
@@ -1122,11 +1344,14 @@ export default function App() {
           <h3>Performans Grafiği</h3>
 
           <div style={{ width: "100%", height: 370 }}>
-            <Line ref={chartRef} data={buildChartData()} options={buildChartOptions()} />
+            <Line
+              ref={chartRef}
+              data={buildChartData()}
+              options={buildChartOptions()}
+            />
           </div>
 
           <h3>Otomatik Yorum</h3>
-
           <p style={{ lineHeight: 1.6 }}>
             {generateSmartComment(scores, metrics)}
           </p>
@@ -1181,7 +1406,6 @@ function ScoreBox({ title, value, color }) {
       }}
     >
       <strong>{title}</strong>
-
       <div style={{ fontSize: 30, fontWeight: "bold", marginTop: 6 }}>
         {value}
       </div>
@@ -1201,7 +1425,6 @@ function MetricBox({ title, value }) {
       }}
     >
       <strong>{title}</strong>
-
       <div style={{ fontSize: 24, fontWeight: "bold", marginTop: 6 }}>
         {value}
       </div>
