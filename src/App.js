@@ -52,33 +52,25 @@ const DISTRACTOR_FILES = [
   { name: "Ağaç", gif: "/distractors/agac.gif", sound: "/distractors/agac.mp3" }
 ];
 
-const TOTAL_TRIALS = 40;
-const TARGET_COUNT = 16;
-const STIMULUS_DURATION = 1000;
-const GAP_DURATION = 500;
+const TEST_DURATION_MS = 180000;
+const PHASE_1_END = 50000;
+const PHASE_2_END = 100000;
+const PHASE_3_END = 150000;
+const PHASE_4_END = 180000;
+
 const LATE_RESPONSE_MS = 800;
+const TARGET_PROBABILITY = 0.4;
 
 function randomItem(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function randomDuration() {
-  return 5000 + Math.floor(Math.random() * 15000);
+function randomGifDuration() {
+  return 5000 + Math.floor(Math.random() * 5000);
 }
 
-function randomDelay() {
-  return 1000 + Math.floor(Math.random() * 1000);
-}
-
-function shuffleArray(array) {
-  const copy = [...array];
-
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-
-  return copy;
+function randomGifDelay() {
+  return 1800 + Math.floor(Math.random() * 2400);
 }
 
 function ShapeView({ shape, color, size = 120 }) {
@@ -138,15 +130,16 @@ export default function App() {
   const [scene, setScene] = useState(null);
   const [target, setTarget] = useState(null);
   const [gifDistractors, setGifDistractors] = useState([]);
+  const [remainingSeconds, setRemainingSeconds] = useState(180);
 
   const targetRef = useRef(null);
   const trialLog = useRef([]);
   const currentTrial = useRef(null);
-  const counter = useRef(0);
   const timer = useRef(null);
   const gifTimer = useRef(null);
+  const testClockTimer = useRef(null);
+  const countdownTimer = useRef(null);
   const chartRef = useRef(null);
-  const trialPlan = useRef([]);
   const lastInputTime = useRef(0);
 
   const activeAudios = useRef({});
@@ -154,6 +147,7 @@ export default function App() {
   const gifRemoveTimers = useRef({});
   const gifDistractorsRef = useRef([]);
   const isPlayingRef = useRef(false);
+  const testStartTimeRef = useRef(0);
 
   useEffect(() => {
     gifDistractorsRef.current = gifDistractors;
@@ -167,6 +161,55 @@ export default function App() {
 
     targetRef.current = newTarget;
     setTarget(newTarget);
+  };
+
+  const getElapsedMs = () => {
+    if (!testStartTimeRef.current) return 0;
+    return performance.now() - testStartTimeRef.current;
+  };
+
+  const getPhaseInfo = (elapsedMs = getElapsedMs()) => {
+    if (elapsedMs < PHASE_1_END) {
+      return {
+        phase: 1,
+        name: "Başlangıç",
+        stimulusDuration: 1100,
+        gapDuration: 950,
+        gifMode: "none",
+        gifPhaseEnd: PHASE_1_END
+      };
+    }
+
+    if (elapsedMs < PHASE_2_END) {
+      return {
+        phase: 2,
+        name: "Görsel Dikkat Dağıtıcı",
+        stimulusDuration: 900,
+        gapDuration: 750,
+        gifMode: "silent",
+        gifPhaseEnd: PHASE_2_END
+      };
+    }
+
+    if (elapsedMs < PHASE_3_END) {
+      return {
+        phase: 3,
+        name: "Sesli ve Görsel Dikkat Dağıtıcı",
+        stimulusDuration: 720,
+        gapDuration: 600,
+        gifMode: "mixed",
+        gifPhaseEnd: PHASE_3_END
+      };
+    }
+
+    return {
+      phase: 4,
+      name: "Kapanış",
+      stimulusDuration: 1100,
+      gapDuration: 950,
+      gifMode: "none",
+      gifPhaseEnd: PHASE_4_END
+    };
   };
 
   const createGifPosition = () => {
@@ -258,12 +301,20 @@ export default function App() {
   const addGifDistractor = ({ forceSilent = false } = {}) => {
     if (!isPlayingRef.current) return;
 
+    const elapsed = getElapsedMs();
+    const phase = getPhaseInfo(elapsed);
+
+    if (phase.gifMode === "none") return;
+
+    const maxAllowedDuration = Math.min(randomGifDuration(), phase.gifPhaseEnd - elapsed - 200);
+
+    if (maxAllowedDuration < 1500) return;
+
     const file = randomItem(DISTRACTOR_FILES);
     const id = String(Date.now() + Math.random());
-    const duration = randomDuration();
     const position = createGifPosition();
 
-    const wantsSound = Math.random() < 0.5;
+    const wantsSound = phase.gifMode === "mixed" && Math.random() < 0.5;
 
     const canBeSound =
       !forceSilent &&
@@ -276,7 +327,7 @@ export default function App() {
       name: file.name,
       gif: file.gif,
       sound: canBeSound ? file.sound : null,
-      duration,
+      duration: maxAllowedDuration,
       left: position.left,
       top: position.top,
       size: 260 + Math.floor(Math.random() * 120)
@@ -311,35 +362,47 @@ export default function App() {
 
     gifRemoveTimers.current[id] = setTimeout(() => {
       removeGifDistractor(id);
-    }, duration);
+    }, maxAllowedDuration);
   };
 
   const scheduleGifDistractor = () => {
     if (!isPlayingRef.current) return;
 
-    const shouldShow = Math.random() > 0.15;
+    const elapsed = getElapsedMs();
 
-    if (shouldShow) {
-      addGifDistractor();
+    if (elapsed >= TEST_DURATION_MS) return;
 
-      const shouldAddSilentAfter = Math.random() > 0.5;
+    const phase = getPhaseInfo(elapsed);
 
-      if (shouldAddSilentAfter) {
-        setTimeout(() => {
-          if (isPlayingRef.current) {
-            addGifDistractor({ forceSilent: true });
-          }
-        }, randomDelay());
+    if (phase.gifMode === "none") {
+      if (elapsed >= PHASE_3_END) {
+        stopGifSystem();
+        return;
       }
+
+      gifTimer.current = setTimeout(scheduleGifDistractor, 1000);
+      return;
     }
 
-    const nextDelay = 2500 + Math.floor(Math.random() * 3500);
-    gifTimer.current = setTimeout(scheduleGifDistractor, nextDelay);
+    addGifDistractor({ forceSilent: phase.gifMode === "silent" });
+
+    const canAddSecondSilentGif =
+      phase.gifMode === "mixed" && Math.random() > 0.5;
+
+    if (canAddSecondSilentGif) {
+      setTimeout(() => {
+        if (isPlayingRef.current && getPhaseInfo().gifMode === "mixed") {
+          addGifDistractor({ forceSilent: true });
+        }
+      }, randomGifDelay());
+    }
+
+    gifTimer.current = setTimeout(scheduleGifDistractor, randomGifDelay());
   };
 
   const startGifSystem = () => {
     clearTimeout(gifTimer.current);
-    gifTimer.current = setTimeout(scheduleGifDistractor, 800);
+    gifTimer.current = setTimeout(scheduleGifDistractor, 1000);
   };
 
   useEffect(() => {
@@ -348,6 +411,8 @@ export default function App() {
     return () => {
       clearTimeout(timer.current);
       clearTimeout(gifTimer.current);
+      clearTimeout(testClockTimer.current);
+      clearInterval(countdownTimer.current);
       clearAllGifTimers();
       stopAllGifAudio();
     };
@@ -377,21 +442,8 @@ export default function App() {
     handleResponse();
   };
 
-  const createTrialPlan = () => {
-    const targets = Array.from({ length: TARGET_COUNT }, () => true);
-    const nonTargets = Array.from(
-      { length: TOTAL_TRIALS - TARGET_COUNT },
-      () => false
-    );
-
-    trialPlan.current = shuffleArray([...targets, ...nonTargets]);
-  };
-
-  const getSectionName = (trialNumber) => {
-    if (trialNumber <= 10) return "Temel";
-    if (trialNumber <= 20) return "Görsel";
-    if (trialNumber <= 30) return "İşitsel";
-    return "Kombine";
+  const getSectionName = () => {
+    return getPhaseInfo().name;
   };
 
   const createNonTargetObject = () => {
@@ -414,29 +466,82 @@ export default function App() {
   const startTest = () => {
     trialLog.current = [];
     currentTrial.current = null;
-    counter.current = 0;
     lastInputTime.current = 0;
+
+    clearTimeout(timer.current);
+    clearTimeout(testClockTimer.current);
+    clearInterval(countdownTimer.current);
 
     setScene(null);
     stopGifSystem();
 
-    createTrialPlan();
+    testStartTimeRef.current = performance.now();
     isPlayingRef.current = true;
+    setRemainingSeconds(180);
     setView("PLAY");
+
     startGifSystem();
+
+    countdownTimer.current = setInterval(() => {
+      const elapsed = getElapsedMs();
+      const remaining = Math.max(0, Math.ceil((TEST_DURATION_MS - elapsed) / 1000));
+      setRemainingSeconds(remaining);
+
+      if (elapsed >= PHASE_3_END) {
+        stopGifSystem();
+      }
+    }, 500);
+
+    testClockTimer.current = setTimeout(() => {
+      finishTest();
+    }, TEST_DURATION_MS);
+  };
+
+  const finishTest = () => {
+    clearTimeout(timer.current);
+    clearTimeout(testClockTimer.current);
+    clearInterval(countdownTimer.current);
+
+    const t = currentTrial.current;
+
+    if (t) {
+      trialLog.current.push({
+        trialNumber: t.trialNumber,
+        section: t.section,
+        isTarget: t.isTarget,
+        shownShape: t.shownShape,
+        shownColor: t.shownColor,
+        targetShape: t.targetShape,
+        targetColor: t.targetColor,
+        responded: t.responded,
+        reactionTime: t.reactionTime || 0,
+        responseCount: t.responses.length
+      });
+    }
+
+    currentTrial.current = null;
+    setScene(null);
+    isPlayingRef.current = false;
+    stopGifSystem();
+    setRemainingSeconds(0);
+    setView("END");
   };
 
   const newTest = () => {
     clearTimeout(timer.current);
+    clearTimeout(testClockTimer.current);
+    clearInterval(countdownTimer.current);
+
     isPlayingRef.current = false;
     stopGifSystem();
 
     trialLog.current = [];
     currentTrial.current = null;
-    counter.current = 0;
     lastInputTime.current = 0;
+    testStartTimeRef.current = 0;
 
     setScene(null);
+    setRemainingSeconds(180);
     createNewTarget();
     setView("START");
   };
@@ -456,23 +561,24 @@ export default function App() {
   };
 
   const nextTrial = () => {
-    if (counter.current >= TOTAL_TRIALS) {
-      currentTrial.current = null;
-      setScene(null);
-      isPlayingRef.current = false;
-      stopGifSystem();
-      setView("END");
+    if (!isPlayingRef.current) return;
+
+    const elapsed = getElapsedMs();
+
+    if (elapsed >= TEST_DURATION_MS) {
+      finishTest();
       return;
     }
 
-    const trialNumber = counter.current + 1;
-    const isTarget = trialPlan.current[counter.current];
+    const phase = getPhaseInfo(elapsed);
+    const trialNumber = trialLog.current.length + 1;
+    const isTarget = Math.random() < TARGET_PROBABILITY;
     const currentTarget = targetRef.current;
     const shownObject = isTarget ? { ...currentTarget } : createNonTargetObject();
 
     currentTrial.current = {
       trialNumber,
-      section: getSectionName(trialNumber),
+      section: phase.name,
       isTarget,
       shownShape: shownObject.shape,
       shownColor: shownObject.color,
@@ -511,9 +617,10 @@ export default function App() {
       }
 
       currentTrial.current = null;
-      counter.current += 1;
-      timer.current = setTimeout(nextTrial, GAP_DURATION);
-    }, STIMULUS_DURATION);
+
+      const nextPhase = getPhaseInfo();
+      timer.current = setTimeout(nextTrial, nextPhase.gapDuration);
+    }, phase.stimulusDuration);
   };
 
   useEffect(() => {
@@ -705,7 +812,12 @@ export default function App() {
   });
 
   const getSectionSummary = () => {
-    const sections = ["Temel", "Görsel", "İşitsel", "Kombine"];
+    const sections = [
+      "Başlangıç",
+      "Görsel Dikkat Dağıtıcı",
+      "Sesli ve Görsel Dikkat Dağıtıcı",
+      "Kapanış"
+    ];
 
     return sections.map((section) => {
       const list = trialLog.current.filter((t) => t.section === section);
@@ -735,7 +847,7 @@ export default function App() {
     );
 
     comments.push(
-      "Test sırasında ana hedef uyaranlardan bağımsız olarak görsel ve zaman zaman sesli dikkat dağıtıcı GIF uyaranları kullanıldı."
+      "Test 3 dakika sürmüştür. İlk bölümde dikkat dağıtıcı verilmemiş, ikinci bölümde sessiz GIF uyaranları, üçüncü bölümde sesli ve sessiz GIF uyaranları kullanılmış, son bölümde tekrar dikkat dağıtıcılar kaldırılmıştır."
     );
 
     if (scores.attention >= 6) comments.push("Dikkat alanında belirgin zorlanma görüldü.");
@@ -789,8 +901,9 @@ export default function App() {
               width: "*",
               stack: [
                 { text: "Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR") },
-                { text: "Test Tipi: GIF destekli hedef / hedef dışı uyaran görevi", margin: [0, 6, 0, 0] },
-                { text: "Toplam Deneme: " + TOTAL_TRIALS, margin: [0, 6, 0, 0] }
+                { text: "Test Tipi: 3 dakikalık GIF destekli hedef / hedef dışı uyaran görevi", margin: [0, 6, 0, 0] },
+                { text: "Toplam Test Süresi: 180 saniye", margin: [0, 6, 0, 0] },
+                { text: "Toplam Deneme: " + metrics.totalTrials, margin: [0, 6, 0, 0] }
               ]
             },
             {
@@ -981,7 +1094,7 @@ export default function App() {
             Aşağıdaki nesne hedef olarak seçildi. Test boyunca sadece bu şekil
             ve bu renk birlikte göründüğünde SPACE tuşuna basın. Mouse ile
             tıklama ve dokunmatik ekranlarda dokunma da cevap olarak kabul
-            edilir.
+            edilir. Test toplam 3 dakika sürer.
           </p>
 
           <div
@@ -1041,6 +1154,24 @@ export default function App() {
             userSelect: "none"
           }}
         >
+          <div
+            style={{
+              position: "absolute",
+              top: 18,
+              right: 24,
+              zIndex: 20,
+              fontSize: 18,
+              fontWeight: "bold",
+              color: "#142440",
+              background: "#F8FAFC",
+              padding: "8px 14px",
+              borderRadius: 12,
+              border: "1px solid #E2E8F0"
+            }}
+          >
+            Süre: {remainingSeconds} sn
+          </div>
+
           {gifDistractors.map((item) => (
             <img
               key={item.id}
