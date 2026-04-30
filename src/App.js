@@ -397,8 +397,7 @@ export default function App() {
     const file = randomItem(getAvailableGifFiles());
     const id = String(Date.now() + Math.random());
     const position = createGifPosition(area, file);
-
-    const wantsSound = phase.gifMode === "mixed" && Math.random() < 0.5;
+const wantsSound = phase.gifMode === "mixed" && Math.random() < 0.8;
 
     const canBeSound =
       !forceSilent &&
