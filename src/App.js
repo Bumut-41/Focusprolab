@@ -14,14 +14,7 @@ import {
 
 pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
 
-ChartJS.register(
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Legend,
-  Tooltip
-);
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
 const SHAPES = [
   { id: "circle", label: "Daire" },
@@ -50,41 +43,13 @@ const COLORS = [
 ];
 
 const DISTRACTOR_FILES = [
-  {
-    name: "Top",
-    gif: "/distractors/top.gif",
-    sound: "/distractors/top.mp3"
-  },
-  {
-    name: "Polis",
-    gif: "/distractors/polis.gif",
-    sound: "/distractors/polis.mp3"
-  },
-  {
-    name: "Koşan İnsan",
-    gif: "/distractors/kosan.gif",
-    sound: "/distractors/kosan.mp3"
-  },
-  {
-    name: "Köpek",
-    gif: "/distractors/kopek.gif",
-    sound: "/distractors/kopek.mp3"
-  },
-  {
-    name: "Kedi",
-    gif: "/distractors/kedi.gif",
-    sound: "/distractors/kedi.mp3"
-  },
-  {
-    name: "Araba",
-    gif: "/distractors/araba.gif",
-    sound: "/distractors/araba.mp3"
-  },
-  {
-    name: "Ağaç",
-    gif: "/distractors/agac.gif",
-    sound: "/distractors/agac.mp3"
-  }
+  { name: "Top", gif: "/distractors/top.gif", sound: "/distractors/top.mp3" },
+  { name: "Polis", gif: "/distractors/polis.gif", sound: "/distractors/polis.mp3" },
+  { name: "Koşan İnsan", gif: "/distractors/kosan.gif", sound: "/distractors/kosan.mp3" },
+  { name: "Köpek", gif: "/distractors/kopek.gif", sound: "/distractors/kopek.mp3" },
+  { name: "Kedi", gif: "/distractors/kedi.gif", sound: "/distractors/kedi.mp3" },
+  { name: "Araba", gif: "/distractors/araba.gif", sound: "/distractors/araba.mp3" },
+  { name: "Ağaç", gif: "/distractors/agac.gif", sound: "/distractors/agac.mp3" }
 ];
 
 const TOTAL_TRIALS = 40;
@@ -107,12 +72,10 @@ function randomDelay() {
 
 function shuffleArray(array) {
   const copy = [...array];
-
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-
   return copy;
 }
 
@@ -128,143 +91,43 @@ function ShapeView({ shape, color, size = 120 }) {
   if (shape === "square") return <div style={base} />;
 
   if (shape === "triangle") {
-    return (
-      <div
-        style={{
-          ...base,
-          clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)"
-        }}
-      />
-    );
+    return <div style={{ ...base, clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }} />;
   }
 
   if (shape === "diamond") {
-    return (
-      <div
-        style={{
-          ...base,
-          transform: "rotate(45deg)"
-        }}
-      />
-    );
+    return <div style={{ ...base, transform: "rotate(45deg)" }} />;
   }
 
   if (shape === "pentagon") {
-    return (
-      <div
-        style={{
-          ...base,
-          clipPath:
-            "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)"
-        }}
-      />
-    );
+    return <div style={{ ...base, clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)" }} />;
   }
 
   if (shape === "hexagon") {
-    return (
-      <div
-        style={{
-          ...base,
-          clipPath:
-            "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)"
-        }}
-      />
-    );
+    return <div style={{ ...base, clipPath: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)" }} />;
   }
 
   if (shape === "vertical") {
-    return (
-      <div
-        style={{
-          width: size * 0.45,
-          height: size,
-          background: color,
-          display: "inline-block"
-        }}
-      />
-    );
+    return <div style={{ width: size * 0.45, height: size, background: color, display: "inline-block" }} />;
   }
 
   if (shape === "horizontal") {
-    return (
-      <div
-        style={{
-          width: size,
-          height: size * 0.45,
-          background: color,
-          display: "inline-block"
-        }}
-      />
-    );
+    return <div style={{ width: size, height: size * 0.45, background: color, display: "inline-block" }} />;
   }
 
   if (shape === "plus") {
     return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          position: "relative",
-          display: "inline-block"
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.4,
-            top: 0,
-            width: size * 0.2,
-            height: size,
-            background: color
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: size * 0.4,
-            width: size,
-            height: size * 0.2,
-            background: color
-          }}
-        />
+      <div style={{ width: size, height: size, position: "relative", display: "inline-block" }}>
+        <div style={{ position: "absolute", left: size * 0.4, top: 0, width: size * 0.2, height: size, background: color }} />
+        <div style={{ position: "absolute", left: 0, top: size * 0.4, width: size, height: size * 0.2, background: color }} />
       </div>
     );
   }
 
   if (shape === "xshape") {
     return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          position: "relative",
-          display: "inline-block"
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.43,
-            top: 0,
-            width: size * 0.14,
-            height: size,
-            background: color,
-            transform: "rotate(45deg)"
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: size * 0.43,
-            top: 0,
-            width: size * 0.14,
-            height: size,
-            background: color,
-            transform: "rotate(-45deg)"
-          }}
-        />
+      <div style={{ width: size, height: size, position: "relative", display: "inline-block" }}>
+        <div style={{ position: "absolute", left: size * 0.43, top: 0, width: size * 0.14, height: size, background: color, transform: "rotate(45deg)" }} />
+        <div style={{ position: "absolute", left: size * 0.43, top: 0, width: size * 0.14, height: size, background: color, transform: "rotate(-45deg)" }} />
       </div>
     );
   }
@@ -273,42 +136,15 @@ function ShapeView({ shape, color, size = 120 }) {
 }
 
 function getShapeSvg(shape, color) {
-  if (shape === "circle") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="35" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "square") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="12" y="12" width="56" height="56" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "triangle") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,8 8,72 72,72" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "diamond") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,40 40,74 6,40" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "pentagon") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,32 61,72 19,72 6,32" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "hexagon") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="22,8 58,8 74,40 58,72 22,72 6,40" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "vertical") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="28" y="6" width="24" height="68" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "horizontal") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="6" y="28" width="68" height="24" fill="${color}"/></svg>`;
-  }
-
-  if (shape === "plus") {
-    return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="32" y="8" width="16" height="64" fill="${color}"/><rect x="8" y="32" width="64" height="16" fill="${color}"/></svg>`;
-  }
-
+  if (shape === "circle") return `<svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="35" fill="${color}"/></svg>`;
+  if (shape === "square") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="12" y="12" width="56" height="56" fill="${color}"/></svg>`;
+  if (shape === "triangle") return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,8 8,72 72,72" fill="${color}"/></svg>`;
+  if (shape === "diamond") return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,40 40,74 6,40" fill="${color}"/></svg>`;
+  if (shape === "pentagon") return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="40,6 74,32 61,72 19,72 6,32" fill="${color}"/></svg>`;
+  if (shape === "hexagon") return `<svg width="80" height="80" viewBox="0 0 80 80"><polygon points="22,8 58,8 74,40 58,72 22,72 6,40" fill="${color}"/></svg>`;
+  if (shape === "vertical") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="28" y="6" width="24" height="68" fill="${color}"/></svg>`;
+  if (shape === "horizontal") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="6" y="28" width="68" height="24" fill="${color}"/></svg>`;
+  if (shape === "plus") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="32" y="8" width="16" height="64" fill="${color}"/><rect x="8" y="32" width="64" height="16" fill="${color}"/></svg>`;
   return `<svg width="80" height="80" viewBox="0 0 80 80"><line x1="15" y1="15" x2="65" y2="65" stroke="${color}" stroke-width="14" stroke-linecap="round"/><line x1="65" y1="15" x2="15" y2="65" stroke="${color}" stroke-width="14" stroke-linecap="round"/></svg>`;
 }
 
@@ -329,6 +165,7 @@ export default function App() {
   const lastInputTime = useRef(0);
   const activeAudios = useRef({});
   const activeSoundId = useRef(null);
+  const isPlayingRef = useRef(false);
 
   const createNewTarget = () => {
     const newTarget = {
@@ -382,6 +219,8 @@ export default function App() {
   };
 
   const addGifDistractor = ({ forceSilent = false } = {}) => {
+    if (!isPlayingRef.current) return;
+
     const file = randomItem(DISTRACTOR_FILES);
     const id = String(Date.now() + Math.random());
     const duration = randomDuration();
@@ -415,7 +254,6 @@ export default function App() {
       audio.volume = 0.55;
       activeAudios.current[id] = audio;
       activeSoundId.current = id;
-
       audio.play().catch(() => {});
     }
 
@@ -427,12 +265,13 @@ export default function App() {
   };
 
   const scheduleGifDistractor = () => {
-    if (view !== "PLAY") return;
+    if (!isPlayingRef.current) return;
 
     const shouldShow = Math.random() > 0.25;
 
     if (shouldShow) {
-      const firstWillTrySound = activeSoundId.current === null && Math.random() > 0.45;
+      const firstWillTrySound =
+        activeSoundId.current === null && Math.random() > 0.45;
 
       addGifDistractor({ forceSilent: !firstWillTrySound });
 
@@ -440,7 +279,7 @@ export default function App() {
 
       if (shouldAddSilentAfter) {
         setTimeout(() => {
-          if (view === "PLAY") {
+          if (isPlayingRef.current) {
             addGifDistractor({ forceSilent: true });
           }
         }, randomDelay());
@@ -448,7 +287,6 @@ export default function App() {
     }
 
     const nextDelay = 3000 + Math.floor(Math.random() * 4000);
-
     gifTimer.current = setTimeout(scheduleGifDistractor, nextDelay);
   };
 
@@ -542,15 +380,14 @@ export default function App() {
     stopAllGifAudio();
 
     createTrialPlan();
+    isPlayingRef.current = true;
     setView("PLAY");
-
-    setTimeout(() => {
-      startGifSystem();
-    }, 500);
+    startGifSystem();
   };
 
   const newTest = () => {
     clearTimeout(timer.current);
+    isPlayingRef.current = false;
     stopGifSystem();
 
     trialLog.current = [];
@@ -581,6 +418,7 @@ export default function App() {
     if (counter.current >= TOTAL_TRIALS) {
       currentTrial.current = null;
       setScene(null);
+      isPlayingRef.current = false;
       stopGifSystem();
       setView("END");
       return;
