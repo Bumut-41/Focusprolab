@@ -72,10 +72,12 @@ function randomDelay() {
 
 function shuffleArray(array) {
   const copy = [...array];
+
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
+
   return copy;
 }
 
@@ -127,6 +129,7 @@ function getShapeSvg(shape, color) {
   if (shape === "vertical") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="28" y="6" width="24" height="68" fill="${color}"/></svg>`;
   if (shape === "horizontal") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="6" y="28" width="68" height="24" fill="${color}"/></svg>`;
   if (shape === "plus") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="32" y="8" width="16" height="64" fill="${color}"/><rect x="8" y="32" width="64" height="16" fill="${color}"/></svg>`;
+
   return `<svg width="80" height="80" viewBox="0 0 80 80"><line x1="15" y1="15" x2="65" y2="65" stroke="${color}" stroke-width="14" stroke-linecap="round"/><line x1="65" y1="15" x2="15" y2="65" stroke="${color}" stroke-width="14" stroke-linecap="round"/></svg>`;
 }
 
@@ -145,9 +148,16 @@ export default function App() {
   const chartRef = useRef(null);
   const trialPlan = useRef([]);
   const lastInputTime = useRef(0);
+
   const activeAudios = useRef({});
   const activeSoundId = useRef(null);
+  const gifRemoveTimers = useRef({});
+  const gifDistractorsRef = useRef([]);
   const isPlayingRef = useRef(false);
+
+  useEffect(() => {
+    gifDistractorsRef.current = gifDistractors;
+  }, [gifDistractors]);
 
   const createNewTarget = () => {
     const newTarget = {
@@ -160,15 +170,28 @@ export default function App() {
   };
 
   const createGifPosition = () => {
-    let left;
-    let top;
+    let bestPosition = { left: 10, top: 10 };
 
-    do {
-      left = 5 + Math.random() * 90;
-      top = 8 + Math.random() * 84;
-    } while (left > 32 && left < 68);
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const left = 6 + Math.random() * 88;
+      const top = 8 + Math.random() * 84;
 
-    return { left, top };
+      const isInCenterZone = left > 31 && left < 69;
+
+      const isTooCloseToAnotherGif = gifDistractorsRef.current.some((item) => {
+        const dx = Math.abs(item.left - left);
+        const dy = Math.abs(item.top - top);
+        return dx < 26 && dy < 26;
+      });
+
+      if (!isInCenterZone && !isTooCloseToAnotherGif) {
+        return { left, top };
+      }
+
+      bestPosition = { left, top };
+    }
+
+    return bestPosition;
   };
 
   const stopGifAudio = (id) => {
@@ -177,6 +200,8 @@ export default function App() {
     if (audio) {
       audio.pause();
       audio.currentTime = 0;
+      audio.loop = false;
+      audio.src = "";
       delete activeAudios.current[id];
     }
 
@@ -185,19 +210,51 @@ export default function App() {
     }
   };
 
+  const clearGifRemoveTimer = (id) => {
+    if (gifRemoveTimers.current[id]) {
+      clearTimeout(gifRemoveTimers.current[id]);
+      delete gifRemoveTimers.current[id];
+    }
+  };
+
+  const removeGifDistractor = (id) => {
+    clearGifRemoveTimer(id);
+    stopGifAudio(id);
+
+    setGifDistractors((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      gifDistractorsRef.current = next;
+      return next;
+    });
+  };
+
   const stopAllGifAudio = () => {
     Object.keys(activeAudios.current).forEach((id) => {
-      activeAudios.current[id].pause();
-      activeAudios.current[id].currentTime = 0;
+      const audio = activeAudios.current[id];
+      audio.pause();
+      audio.currentTime = 0;
+      audio.loop = false;
+      audio.src = "";
     });
 
     activeAudios.current = {};
     activeSoundId.current = null;
   };
 
-  const removeGifDistractor = (id) => {
-    stopGifAudio(id);
-    setGifDistractors((prev) => prev.filter((item) => item.id !== id));
+  const clearAllGifTimers = () => {
+    Object.keys(gifRemoveTimers.current).forEach((id) => {
+      clearTimeout(gifRemoveTimers.current[id]);
+    });
+
+    gifRemoveTimers.current = {};
+  };
+
+  const stopGifSystem = () => {
+    clearTimeout(gifTimer.current);
+    clearAllGifTimers();
+    stopAllGifAudio();
+    gifDistractorsRef.current = [];
+    setGifDistractors([]);
   };
 
   const addGifDistractor = ({ forceSilent = false } = {}) => {
@@ -224,12 +281,22 @@ export default function App() {
       duration,
       left: position.left,
       top: position.top,
-      size: 155 + Math.floor(Math.random() * 75)
+      size: 170 + Math.floor(Math.random() * 80)
     };
 
     setGifDistractors((prev) => {
-      const next = [...prev, item];
-      return next.slice(-2);
+      let next = [...prev];
+
+      if (next.length >= 2) {
+        const removed = next[0];
+        clearGifRemoveTimer(removed.id);
+        stopGifAudio(removed.id);
+        next = next.slice(1);
+      }
+
+      next = [...next, item];
+      gifDistractorsRef.current = next;
+      return next;
     });
 
     if (item.sound) {
@@ -238,14 +305,15 @@ export default function App() {
       audio.volume = 0.7;
       activeAudios.current[id] = audio;
       activeSoundId.current = id;
-      audio.play().catch(() => {});
+
+      audio.play().catch(() => {
+        stopGifAudio(id);
+      });
     }
 
-    setTimeout(() => {
+    gifRemoveTimers.current[id] = setTimeout(() => {
       removeGifDistractor(id);
     }, duration);
-
-    return item;
   };
 
   const scheduleGifDistractor = () => {
@@ -276,18 +344,13 @@ export default function App() {
     gifTimer.current = setTimeout(scheduleGifDistractor, 800);
   };
 
-  const stopGifSystem = () => {
-    clearTimeout(gifTimer.current);
-    setGifDistractors([]);
-    stopAllGifAudio();
-  };
-
   useEffect(() => {
     createNewTarget();
 
     return () => {
       clearTimeout(timer.current);
       clearTimeout(gifTimer.current);
+      clearAllGifTimers();
       stopAllGifAudio();
     };
   }, []);
@@ -357,8 +420,7 @@ export default function App() {
     lastInputTime.current = 0;
 
     setScene(null);
-    setGifDistractors([]);
-    stopAllGifAudio();
+    stopGifSystem();
 
     createTrialPlan();
     isPlayingRef.current = true;
@@ -747,6 +809,140 @@ export default function App() {
             }
           ],
           margin: [0, 0, 0, 20]
+        },
+        {
+          columns: [
+            ["Dikkat", scores.attention],
+            ["Zamanlama", scores.timing],
+            ["Dürtüsellik", scores.impulsivity],
+            ["Hiperaktivite", scores.hyperactivity]
+          ].map(([title, value]) => ({
+            width: "*",
+            table: {
+              widths: ["*"],
+              body: [
+                [
+                  {
+                    stack: [
+                      { text: title, color: "white", bold: true, fontSize: 11 },
+                      { text: String(value), color: "white", bold: true, fontSize: 22, margin: [0, 8, 0, 0] }
+                    ],
+                    fillColor: getScoreColor(value),
+                    margin: [10, 10, 10, 10]
+                  }
+                ]
+              ]
+            },
+            layout: "noBorders",
+            margin: [0, 0, 8, 0]
+          })),
+          columnGap: 4,
+          margin: [0, 0, 0, 24]
+        },
+        {
+          table: {
+            headerRows: 1,
+            widths: ["*", "auto", "auto", "*"],
+            body: [
+              [
+                { text: "İndeks", bold: true, color: "white" },
+                { text: "Hata Skoru", bold: true, color: "white" },
+                { text: "Seviye", bold: true, color: "white" },
+                { text: "Yorum", bold: true, color: "white" }
+              ],
+              ["A - Dikkat", scores.attention, getLevel(scores.attention), getLevelText(scores.attention)],
+              ["T - Zamanlama", scores.timing, getLevel(scores.timing), getLevelText(scores.timing)],
+              ["I - Dürtüsellik", scores.impulsivity, getLevel(scores.impulsivity), getLevelText(scores.impulsivity)],
+              ["H - Hiperaktivite", scores.hyperactivity, getLevel(scores.hyperactivity), getLevelText(scores.hyperactivity)]
+            ]
+          },
+          layout: {
+            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            hLineColor: () => "#CBD5E1",
+            vLineColor: () => "#CBD5E1"
+          },
+          margin: [0, 0, 0, 16]
+        },
+        {
+          table: {
+            headerRows: 1,
+            widths: ["*", "*"],
+            body: [
+              [
+                { text: "Ölçüm", bold: true, color: "white" },
+                { text: "Değer", bold: true, color: "white" }
+              ],
+              ["Genel Doğruluk", "%" + metrics.accuracy],
+              ["Ortalama Tepki Süresi", metrics.avgReaction + " ms"],
+              ["Hedef Sayısı", metrics.targets],
+              ["Hedef Dışı Uyaran Sayısı", metrics.nonTargets],
+              ["Doğru Hedef Yanıtı", metrics.correctHits],
+              ["Kaçırılan Hedef", metrics.omissions],
+              ["Geç Yanıt", metrics.lateResponses],
+              ["Yanlış / Dürtüsel Yanıt", metrics.impulsiveErrors],
+              ["Çoklu Tuşlama", metrics.multiPress]
+            ]
+          },
+          layout: {
+            fillColor: (rowIndex) => rowIndex === 0 ? "#374151" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            hLineColor: () => "#CBD5E1",
+            vLineColor: () => "#CBD5E1"
+          }
+        },
+        {
+          text: "Performans Grafiği",
+          fontSize: 15,
+          bold: true,
+          margin: [0, 20, 0, 8],
+          pageBreak: "before"
+        },
+        chartImage
+          ? { image: chartImage, width: 520, margin: [0, 0, 0, 20] }
+          : { text: "Grafik görüntüsü alınamadı.", margin: [0, 0, 0, 20] },
+        {
+          table: {
+            headerRows: 1,
+            widths: ["*", "*", "*", "*", "*"],
+            body: [
+              [
+                { text: "Bölüm", bold: true, color: "white" },
+                { text: "Dikkat", bold: true, color: "white" },
+                { text: "Zamanlama", bold: true, color: "white" },
+                { text: "Dürtüsellik", bold: true, color: "white" },
+                { text: "Hiperaktivite", bold: true, color: "white" }
+              ],
+              ...sections.map((section) => [
+                section.section,
+                section.attentionScore,
+                section.timingScore,
+                section.impulsivityScore,
+                section.hyperactivityScore
+              ])
+            ]
+          },
+          layout: {
+            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            hLineColor: () => "#CBD5E1",
+            vLineColor: () => "#CBD5E1"
+          },
+          margin: [0, 0, 0, 20]
+        },
+        {
+          text: "Otomatik Yorum",
+          fontSize: 15,
+          bold: true,
+          margin: [0, 0, 0, 8]
+        },
+        {
+          text: generateSmartComment(scores, metrics),
+          fontSize: 10,
+          lineHeight: 1.3,
+          margin: [0, 0, 0, 40]
+        },
+        {
+          text: "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
+          fontSize: 8,
+          color: "#64748B"
         }
       ]
     };
