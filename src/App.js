@@ -220,43 +220,54 @@ export default function App() {
     return DISTRACTOR_FILES;
   };
 
-  const createGifPosition = () => {
-    const zones = [
-      { name: "left", leftMin: 13, leftMax: 26, topMin: 18, topMax: 82 },
-      { name: "right", leftMin: 74, leftMax: 87, topMin: 18, topMax: 82 },
-      { name: "top", leftMin: 25, leftMax: 75, topMin: 14, topMax: 25 },
-      { name: "bottom", leftMin: 25, leftMax: 75, topMin: 75, topMax: 86 },
-      { name: "upper-left", leftMin: 15, leftMax: 38, topMin: 16, topMax: 36 },
-      { name: "upper-right", leftMin: 62, leftMax: 85, topMin: 16, topMax: 36 },
-      { name: "lower-left", leftMin: 15, leftMax: 38, topMin: 64, topMax: 84 },
-      { name: "lower-right", leftMin: 62, leftMax: 85, topMin: 64, topMax: 84 }
+  const getAvailableGifAreas = () => {
+    const usedAreas = gifDistractorsRef.current.map((item) => item.area);
+    const areas = ["left", "right"];
+    return areas.filter((area) => !usedAreas.includes(area));
+  };
+
+  const createGifPosition = (area) => {
+    const verticalZones = [
+      { name: "upper", topMin: 18, topMax: 28 },
+      { name: "middle", topMin: 44, topMax: 56 },
+      { name: "lower", topMin: 72, topMax: 82 }
     ];
 
-    for (let attempt = 0; attempt < 180; attempt++) {
-      const zone = randomItem(zones);
-      const left = zone.leftMin + Math.random() * (zone.leftMax - zone.leftMin);
-      const top = zone.topMin + Math.random() * (zone.topMax - zone.topMin);
+    const selectedVerticalZone = randomItem(verticalZones);
 
-      const isMainObjectBlockedZone =
-        left > 36 &&
-        left < 64 &&
-        top > 30 &&
-        top < 70;
+    let leftMin;
+    let leftMax;
+
+    if (area === "left") {
+      leftMin = 16;
+      leftMax = 28;
+    } else {
+      leftMin = 72;
+      leftMax = 84;
+    }
+
+    for (let attempt = 0; attempt < 120; attempt++) {
+      const left = leftMin + Math.random() * (leftMax - leftMin);
+      const top =
+        selectedVerticalZone.topMin +
+        Math.random() * (selectedVerticalZone.topMax - selectedVerticalZone.topMin);
 
       const isTooCloseToAnotherGif = gifDistractorsRef.current.some((item) => {
         const dx = Math.abs(item.left - left);
         const dy = Math.abs(item.top - top);
-        return dx < 34 && dy < 34;
+        return dx < 30 && dy < 30;
       });
 
-      if (!isMainObjectBlockedZone && !isTooCloseToAnotherGif) {
-        return { left, top };
+      if (!isTooCloseToAnotherGif) {
+        return { left, top, area };
       }
     }
 
-    return Math.random() > 0.5
-      ? { left: 18, top: 22 + Math.random() * 56 }
-      : { left: 82, top: 22 + Math.random() * 56 };
+    return {
+      left: area === "left" ? 20 : 80,
+      top: selectedVerticalZone.name === "upper" ? 22 : selectedVerticalZone.name === "middle" ? 50 : 78,
+      area
+    };
   };
 
   const stopGifAudio = (id) => {
@@ -330,6 +341,12 @@ export default function App() {
 
     if (phase.gifMode === "none") return;
 
+    const availableAreas = getAvailableGifAreas();
+
+    if (availableAreas.length === 0) return;
+
+    const area = randomItem(availableAreas);
+
     const maxAllowedDuration = Math.min(
       randomGifDuration(),
       phase.gifPhaseEnd - elapsed - 300
@@ -339,7 +356,7 @@ export default function App() {
 
     const file = randomItem(getAvailableGifFiles());
     const id = String(Date.now() + Math.random());
-    const position = createGifPosition();
+    const position = createGifPosition(area);
 
     const wantsSound = phase.gifMode === "mixed" && Math.random() < 0.5;
 
@@ -357,22 +374,17 @@ export default function App() {
       duration: maxAllowedDuration,
       left: position.left,
       top: position.top,
+      area: position.area,
       size: 250 + Math.floor(Math.random() * 110)
     };
 
     setGifDistractors((prev) => {
       let next = [...prev];
 
-      if (next.length >= 2) {
-        const removed = next[0];
-        clearGifRemoveTimer(removed.id);
-        stopGifAudio(removed.id);
-        next = next.slice(1);
-      }
+      const sameAreaExists = next.some((existing) => existing.area === item.area);
+      const sameGifExists = next.some((existing) => existing.gif === item.gif);
 
-      const alreadySameGif = next.some((existing) => existing.gif === item.gif);
-
-      if (alreadySameGif) {
+      if (sameAreaExists || sameGifExists || next.length >= 2) {
         return next;
       }
 
@@ -422,6 +434,7 @@ export default function App() {
     const canAddSecondSilentGif =
       phase.gifMode === "mixed" &&
       gifDistractorsRef.current.length < 2 &&
+      getAvailableGifAreas().length > 0 &&
       Math.random() > 0.62;
 
     if (canAddSecondSilentGif) {
@@ -429,7 +442,8 @@ export default function App() {
         if (
           isPlayingRef.current &&
           getPhaseInfo().gifMode === "mixed" &&
-          gifDistractorsRef.current.length < 2
+          gifDistractorsRef.current.length < 2 &&
+          getAvailableGifAreas().length > 0
         ) {
           addGifDistractor({ forceSilent: true });
         }
@@ -439,6 +453,7 @@ export default function App() {
     const canAddSecondSilentInSilentPhase =
       phase.gifMode === "silent" &&
       gifDistractorsRef.current.length < 2 &&
+      getAvailableGifAreas().length > 0 &&
       Math.random() > 0.7;
 
     if (canAddSecondSilentInSilentPhase) {
@@ -446,7 +461,8 @@ export default function App() {
         if (
           isPlayingRef.current &&
           getPhaseInfo().gifMode === "silent" &&
-          gifDistractorsRef.current.length < 2
+          gifDistractorsRef.current.length < 2 &&
+          getAvailableGifAreas().length > 0
         ) {
           addGifDistractor({ forceSilent: true });
         }
