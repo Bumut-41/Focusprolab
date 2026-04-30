@@ -43,18 +43,17 @@ const COLORS = [
 ];
 
 const DISTRACTOR_FILES = [
-  { name: "Top", gif: "/distractors/top.gif", sound: "/distractors/top.mp3", size: 245 },
-  { name: "Koşan İnsan", gif: "/distractors/kosan.gif", sound: "/distractors/kosan.mp3", size: 245 },
-  { name: "Kedi", gif: "/distractors/kedi.gif", sound: "/distractors/kedi.mp3", size: 240 },
-  { name: "Araba", gif: "/distractors/araba.gif", sound: "/distractors/araba.mp3", size: 250 },
-  { name: "Ağaç", gif: "/distractors/agac.gif", sound: "/distractors/agac.mp3", size: 245 },
-
-  { name: "Araba Korna", gif: "/distractors/arabakorna.gif", sound: "/distractors/arabakorna.mp3", size: 250 },
-  { name: "Asansör", gif: "/distractors/asansor.gif", sound: "/distractors/asansor.mp3", size: 245 },
-  { name: "Cam Temizliği", gif: "/distractors/camtemizlik.gif", sound: "/distractors/camtemizlik.mp3", size: 250 },
-  { name: "Kapı", gif: "/distractors/kapi.gif", sound: "/distractors/kapi.mp3", size: 245 },
-  { name: "Motorsiklet", gif: "/distractors/motorsiklet.gif", sound: "/distractors/motorsiklet.mp3", size: 250 },
-  { name: "Televizyon", gif: "/distractors/televizyon.gif", sound: "/distractors/televizyon.mp3", size: 250 }
+  { name: "Top", gif: "/distractors/top.gif", sound: "/distractors/top.mp3", size: 235 },
+  { name: "Koşan İnsan", gif: "/distractors/kosan.gif", sound: "/distractors/kosan.mp3", size: 235 },
+  { name: "Kedi", gif: "/distractors/kedi.gif", sound: "/distractors/kedi.mp3", size: 230 },
+  { name: "Araba", gif: "/distractors/araba.gif", sound: "/distractors/araba.mp3", size: 240 },
+  { name: "Ağaç", gif: "/distractors/agac.gif", sound: "/distractors/agac.mp3", size: 235 },
+  { name: "Araba Korna", gif: "/distractors/arabakorna.gif", sound: "/distractors/arabakorna.mp3", size: 240 },
+  { name: "Asansör", gif: "/distractors/asansor.gif", sound: "/distractors/asansor.mp3", size: 235 },
+  { name: "Cam Temizliği", gif: "/distractors/camtemizlik.gif", sound: "/distractors/camtemizlik.mp3", size: 240 },
+  { name: "Kapı", gif: "/distractors/kapi.gif", sound: "/distractors/kapi.mp3", size: 235 },
+  { name: "Motorsiklet", gif: "/distractors/motorsiklet.gif", sound: "/distractors/motorsiklet.mp3", size: 240 },
+  { name: "Televizyon", gif: "/distractors/televizyon.gif", sound: "/distractors/televizyon.mp3", size: 240 }
 ];
 
 const TEST_DURATION_MS = 180000;
@@ -231,45 +230,40 @@ export default function App() {
     return areas.filter((area) => !usedAreas.includes(area));
   };
 
- // SADECE BU FONKSİYON DEĞİŞTİ — geri kalan kod aynı kalabilir
-// Senin sisteminde createGifPosition fonksiyonunu bununla değiştir
+  const createGifPosition = (area, file) => {
+    const gridRows = [
+      { zone: "upper", top: 26 },
+      { zone: "middle", top: 50 },
+      { zone: "lower", top: 74 }
+    ];
 
-const createGifPosition = (area, file) => {
-  const zones = ["upper", "middle", "lower"];
-  const selectedZone = randomItem(zones);
+    let selectedRow = randomItem(gridRows);
 
-  let top;
+    const otherGif = gifDistractorsRef.current.find((gif) => gif.area !== area);
 
-  if (selectedZone === "upper") top = 25;
-  if (selectedZone === "middle") top = 50;
-  if (selectedZone === "lower") top = 75;
-
-  // SAĞ - SOL KENARA YAKIN
-  let left = area === "left" ? 8 : 92;
-
-  // 👉 AKILLI HİZALAMA
-  const otherGif = gifDistractorsRef.current.find(g => g.area !== area);
-
-  if (otherGif) {
-    // Eğer aynı bölgedelerse birebir hizala
-    const sameZone =
-      (otherGif.top < 35 && selectedZone === "upper") ||
-      (otherGif.top >= 35 && otherGif.top <= 65 && selectedZone === "middle") ||
-      (otherGif.top > 65 && selectedZone === "lower");
-
-    if (sameZone) {
-      top = otherGif.top;
+    if (otherGif && Math.random() > 0.45) {
+      selectedRow = gridRows.find((row) => row.zone === otherGif.zone) || selectedRow;
     }
-  }
 
-  // 👉 ÖZEL İNCE AYARLAR
-  if (area === "right" && (file.name === "Araba" || file.name === "Araba Korna")) {
-    left = 94;     // daha sağa
-    top = top - 3; // biraz yukarı
-  }
+    let left = area === "left" ? 18 : 82;
+    let top = selectedRow.top;
 
-  return { left, top, area };
-};
+    if (area === "right" && (file.name === "Araba" || file.name === "Araba Korna")) {
+      left = 83;
+      top = Math.max(26, top - 2);
+    }
+
+    if (area === "left" && file.name === "Ağaç") {
+      left = 18;
+    }
+
+    return {
+      left,
+      top,
+      area,
+      zone: selectedRow.zone
+    };
+  };
 
   const stopGifAudio = (id) => {
     const audio = activeAudios.current[id];
@@ -376,6 +370,7 @@ const createGifPosition = (area, file) => {
       left: position.left,
       top: position.top,
       area: position.area,
+      zone: position.zone,
       size: file.size
     };
 
@@ -989,6 +984,140 @@ const createGifPosition = (area, file) => {
             }
           ],
           margin: [0, 0, 0, 20]
+        },
+        {
+          columns: [
+            ["Dikkat", scores.attention],
+            ["Zamanlama", scores.timing],
+            ["Dürtüsellik", scores.impulsivity],
+            ["Hiperaktivite", scores.hyperactivity]
+          ].map(([title, value]) => ({
+            width: "*",
+            table: {
+              widths: ["*"],
+              body: [
+                [
+                  {
+                    stack: [
+                      { text: title, color: "white", bold: true, fontSize: 11 },
+                      { text: String(value), color: "white", bold: true, fontSize: 22, margin: [0, 8, 0, 0] }
+                    ],
+                    fillColor: getScoreColor(value),
+                    margin: [10, 10, 10, 10]
+                  }
+                ]
+              ]
+            },
+            layout: "noBorders",
+            margin: [0, 0, 8, 0]
+          })),
+          columnGap: 4,
+          margin: [0, 0, 0, 24]
+        },
+        {
+          table: {
+            headerRows: 1,
+            widths: ["*", "auto", "auto", "*"],
+            body: [
+              [
+                { text: "İndeks", bold: true, color: "white" },
+                { text: "Hata Skoru", bold: true, color: "white" },
+                { text: "Seviye", bold: true, color: "white" },
+                { text: "Yorum", bold: true, color: "white" }
+              ],
+              ["A - Dikkat", scores.attention, getLevel(scores.attention), getLevelText(scores.attention)],
+              ["T - Zamanlama", scores.timing, getLevel(scores.timing), getLevelText(scores.timing)],
+              ["I - Dürtüsellik", scores.impulsivity, getLevel(scores.impulsivity), getLevelText(scores.impulsivity)],
+              ["H - Hiperaktivite", scores.hyperactivity, getLevel(scores.hyperactivity), getLevelText(scores.hyperactivity)]
+            ]
+          },
+          layout: {
+            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            hLineColor: () => "#CBD5E1",
+            vLineColor: () => "#CBD5E1"
+          },
+          margin: [0, 0, 0, 16]
+        },
+        {
+          table: {
+            headerRows: 1,
+            widths: ["*", "*"],
+            body: [
+              [
+                { text: "Ölçüm", bold: true, color: "white" },
+                { text: "Değer", bold: true, color: "white" }
+              ],
+              ["Genel Doğruluk", "%" + metrics.accuracy],
+              ["Ortalama Tepki Süresi", metrics.avgReaction + " ms"],
+              ["Hedef Sayısı", metrics.targets],
+              ["Hedef Dışı Uyaran Sayısı", metrics.nonTargets],
+              ["Doğru Hedef Yanıtı", metrics.correctHits],
+              ["Kaçırılan Hedef", metrics.omissions],
+              ["Geç Yanıt", metrics.lateResponses],
+              ["Yanlış / Dürtüsel Yanıt", metrics.impulsiveErrors],
+              ["Çoklu Tuşlama", metrics.multiPress]
+            ]
+          },
+          layout: {
+            fillColor: (rowIndex) => rowIndex === 0 ? "#374151" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            hLineColor: () => "#CBD5E1",
+            vLineColor: () => "#CBD5E1"
+          }
+        },
+        {
+          text: "Performans Grafiği",
+          fontSize: 15,
+          bold: true,
+          margin: [0, 20, 0, 8],
+          pageBreak: "before"
+        },
+        chartImage
+          ? { image: chartImage, width: 520, margin: [0, 0, 0, 20] }
+          : { text: "Grafik görüntüsü alınamadı.", margin: [0, 0, 0, 20] },
+        {
+          table: {
+            headerRows: 1,
+            widths: ["*", "*", "*", "*", "*"],
+            body: [
+              [
+                { text: "Bölüm", bold: true, color: "white" },
+                { text: "Dikkat", bold: true, color: "white" },
+                { text: "Zamanlama", bold: true, color: "white" },
+                { text: "Dürtüsellik", bold: true, color: "white" },
+                { text: "Hiperaktivite", bold: true, color: "white" }
+              ],
+              ...sections.map((section) => [
+                section.section,
+                section.attentionScore,
+                section.timingScore,
+                section.impulsivityScore,
+                section.hyperactivityScore
+              ])
+            ]
+          },
+          layout: {
+            fillColor: (rowIndex) => rowIndex === 0 ? "#142440" : rowIndex % 2 === 0 ? "#F8FAFC" : null,
+            hLineColor: () => "#CBD5E1",
+            vLineColor: () => "#CBD5E1"
+          },
+          margin: [0, 0, 0, 20]
+        },
+        {
+          text: "Otomatik Yorum",
+          fontSize: 15,
+          bold: true,
+          margin: [0, 0, 0, 8]
+        },
+        {
+          text: generateSmartComment(scores, metrics),
+          fontSize: 10,
+          lineHeight: 1.3,
+          margin: [0, 0, 0, 40]
+        },
+        {
+          text: "Not: Bu uygulama klinik tanı koymaz. Sonuçlar yalnızca dikkat performansı hakkında ön bilgi sağlar.",
+          fontSize: 8,
+          color: "#64748B"
         }
       ]
     };
@@ -1117,8 +1246,8 @@ const createGifPosition = (area, file) => {
                 left: `${item.left}%`,
                 top: `${item.top}%`,
                 width: item.size,
-                maxWidth: "34%",
-                maxHeight: "42%",
+                maxWidth: "30%",
+                maxHeight: "38%",
                 height: "auto",
                 transform: "translate(-50%, -50%)",
                 pointerEvents: "none",
