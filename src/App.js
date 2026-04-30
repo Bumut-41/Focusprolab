@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
 import { Line } from "react-chartjs-2";
@@ -13,7 +13,6 @@ import {
 } from "chart.js";
 
 pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
-
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Legend, Tooltip);
 
 const SHAPES = [
@@ -30,16 +29,8 @@ const SHAPES = [
 ];
 
 const COLORS = [
-  "#2563EB",
-  "#16A34A",
-  "#DC2626",
-  "#F59E0B",
-  "#7C3AED",
-  "#0891B2",
-  "#DB2777",
-  "#65A30D",
-  "#EA580C",
-  "#0F172A"
+  "#2563EB", "#16A34A", "#DC2626", "#F59E0B", "#7C3AED",
+  "#0891B2", "#DB2777", "#65A30D", "#EA580C", "#0F172A"
 ];
 
 const DISTRACTOR_FILES = [
@@ -56,11 +47,26 @@ const DISTRACTOR_FILES = [
   { name: "Televizyon", gif: "/distractors/televizyon.gif", sound: "/distractors/televizyon.mp3", size: 240 }
 ];
 
-const TEST_DURATION_MS = 180000;
+const INDEPENDENT_SOUNDS = [
+  "/distractors/alarm.mp3",
+  "/distractors/cekic.mp3",
+  "/distractors/gemi.mp3",
+  "/distractors/sudamlasi.mp3",
+  "/distractors/kussesi.mp3",
+  "/distractors/hilti.mp3",
+  "/distractors/tren.mp3",
+  "/distractors/matkap.mp3",
+  "/distractors/insan.mp3",
+  "/distractors/testere.mp3"
+];
+
+const TEST_DURATION_MS = 280000;
 const PHASE_1_END = 50000;
 const PHASE_2_END = 100000;
 const PHASE_3_END = 150000;
-const PHASE_4_END = 180000;
+const PHASE_4_END = 200000;
+const PHASE_5_END = 250000;
+const PHASE_6_END = 280000;
 
 const LATE_RESPONSE_MS = 800;
 const TARGET_PROBABILITY = 0.4;
@@ -77,13 +83,12 @@ function randomGifDelay() {
   return 1800 + Math.floor(Math.random() * 2400);
 }
 
+function randomSoundDelay() {
+  return 2000 + Math.floor(Math.random() * 2000);
+}
+
 function ShapeView({ shape, color, size = 120 }) {
-  const base = {
-    width: size,
-    height: size,
-    background: color,
-    display: "inline-block"
-  };
+  const base = { width: size, height: size, background: color, display: "inline-block" };
 
   if (shape === "circle") return <div style={{ ...base, borderRadius: "50%" }} />;
   if (shape === "square") return <div style={base} />;
@@ -125,7 +130,6 @@ function getShapeSvg(shape, color) {
   if (shape === "vertical") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="28" y="6" width="24" height="68" fill="${color}"/></svg>`;
   if (shape === "horizontal") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="6" y="28" width="68" height="24" fill="${color}"/></svg>`;
   if (shape === "plus") return `<svg width="80" height="80" viewBox="0 0 80 80"><rect x="32" y="8" width="16" height="64" fill="${color}"/><rect x="8" y="32" width="64" height="16" fill="${color}"/></svg>`;
-
   return `<svg width="80" height="80" viewBox="0 0 80 80"><line x1="15" y1="15" x2="65" y2="65" stroke="${color}" stroke-width="14" stroke-linecap="round"/><line x1="65" y1="15" x2="15" y2="65" stroke="${color}" stroke-width="14" stroke-linecap="round"/></svg>`;
 }
 
@@ -134,20 +138,22 @@ export default function App() {
   const [scene, setScene] = useState(null);
   const [target, setTarget] = useState(null);
   const [gifDistractors, setGifDistractors] = useState([]);
-  const [remainingSeconds, setRemainingSeconds] = useState(180);
 
   const targetRef = useRef(null);
   const trialLog = useRef([]);
   const currentTrial = useRef(null);
+
   const timer = useRef(null);
   const gifTimer = useRef(null);
   const testClockTimer = useRef(null);
-  const countdownTimer = useRef(null);
+  const soundTimer = useRef(null);
   const chartRef = useRef(null);
-  const lastInputTime = useRef(0);
 
+  const lastInputTime = useRef(0);
   const activeAudios = useRef({});
   const activeSoundId = useRef(null);
+  const independentAudioRef = useRef(null);
+
   const gifRemoveTimers = useRef({});
   const gifDistractorsRef = useRef([]);
   const isPlayingRef = useRef(false);
@@ -176,58 +182,83 @@ export default function App() {
     if (elapsedMs < PHASE_1_END) {
       return {
         phase: 1,
-        name: "Başlangıç",
-        stimulusDuration: 1100,
-        gapDuration: 950,
+        name: "Alışma",
+        stimulusDuration: 1200,
+        gapDuration: 1000,
         gifMode: "none",
-        gifPhaseEnd: PHASE_1_END
+        independentSound: false,
+        phaseEnd: PHASE_1_END
       };
     }
 
     if (elapsedMs < PHASE_2_END) {
       return {
         phase: 2,
-        name: "Görsel Dikkat Dağıtıcı",
+        name: "Sessiz GIF",
         stimulusDuration: 900,
-        gapDuration: 750,
+        gapDuration: 700,
         gifMode: "silent",
-        gifPhaseEnd: PHASE_2_END
+        independentSound: false,
+        phaseEnd: PHASE_2_END
       };
     }
 
     if (elapsedMs < PHASE_3_END) {
       return {
         phase: 3,
-        name: "Sesli ve Görsel Dikkat Dağıtıcı",
-        stimulusDuration: 720,
-        gapDuration: 600,
+        name: "Bağımsız Ses",
+        stimulusDuration: 900,
+        gapDuration: 700,
+        gifMode: "none",
+        independentSound: true,
+        phaseEnd: PHASE_3_END
+      };
+    }
+
+    if (elapsedMs < PHASE_4_END) {
+      return {
+        phase: 4,
+        name: "Sesli ve Sessiz GIF",
+        stimulusDuration: 650,
+        gapDuration: 550,
         gifMode: "mixed",
-        gifPhaseEnd: PHASE_3_END
+        independentSound: false,
+        phaseEnd: PHASE_4_END
+      };
+    }
+
+    if (elapsedMs < PHASE_5_END) {
+      return {
+        phase: 5,
+        name: "Hızlı Uyaran",
+        stimulusDuration: 500,
+        gapDuration: 450,
+        gifMode: "none",
+        independentSound: false,
+        phaseEnd: PHASE_5_END
       };
     }
 
     return {
-      phase: 4,
-      name: "Kapanış",
-      stimulusDuration: 1100,
-      gapDuration: 950,
+      phase: 6,
+      name: "Yavaş Kapanış",
+      stimulusDuration: 1500,
+      gapDuration: 1300,
       gifMode: "none",
-      gifPhaseEnd: PHASE_4_END
+      independentSound: false,
+      phaseEnd: PHASE_6_END
     };
   };
 
   const getAvailableGifFiles = () => {
     const activeGifs = gifDistractorsRef.current.map((item) => item.gif);
     const available = DISTRACTOR_FILES.filter((file) => !activeGifs.includes(file.gif));
-
-    if (available.length > 0) return available;
-    return DISTRACTOR_FILES;
+    return available.length > 0 ? available : DISTRACTOR_FILES;
   };
 
   const getAvailableGifAreas = () => {
     const usedAreas = gifDistractorsRef.current.map((item) => item.area);
-    const areas = ["left", "right"];
-    return areas.filter((area) => !usedAreas.includes(area));
+    return ["left", "right"].filter((area) => !usedAreas.includes(area));
   };
 
   const createGifPosition = (area, file) => {
@@ -238,7 +269,6 @@ export default function App() {
     ];
 
     let selectedRow = randomItem(gridRows);
-
     const otherGif = gifDistractorsRef.current.find((gif) => gif.area !== area);
 
     if (otherGif && Math.random() > 0.45) {
@@ -278,6 +308,15 @@ export default function App() {
 
     if (activeSoundId.current === id) {
       activeSoundId.current = null;
+    }
+  };
+
+  const stopIndependentSound = () => {
+    if (independentAudioRef.current) {
+      independentAudioRef.current.pause();
+      independentAudioRef.current.currentTime = 0;
+      independentAudioRef.current.src = "";
+      independentAudioRef.current = null;
     }
   };
 
@@ -328,6 +367,13 @@ export default function App() {
     setGifDistractors([]);
   };
 
+  const stopAllSystems = () => {
+    clearTimeout(gifTimer.current);
+    clearTimeout(soundTimer.current);
+    stopGifSystem();
+    stopIndependentSound();
+  };
+
   const addGifDistractor = ({ forceSilent = false } = {}) => {
     if (!isPlayingRef.current) return;
 
@@ -335,16 +381,15 @@ export default function App() {
     const phase = getPhaseInfo(elapsed);
 
     if (phase.gifMode === "none") return;
+    if (independentAudioRef.current) return;
 
     const availableAreas = getAvailableGifAreas();
-
     if (availableAreas.length === 0) return;
 
     const area = randomItem(availableAreas);
-
     const maxAllowedDuration = Math.min(
       randomGifDuration(),
-      phase.gifPhaseEnd - elapsed - 300
+      phase.phaseEnd - elapsed - 300
     );
 
     if (maxAllowedDuration < 1500) return;
@@ -359,7 +404,8 @@ export default function App() {
       !forceSilent &&
       wantsSound &&
       file.sound &&
-      activeSoundId.current === null;
+      activeSoundId.current === null &&
+      !independentAudioRef.current;
 
     const item = {
       id,
@@ -375,16 +421,12 @@ export default function App() {
     };
 
     setGifDistractors((prev) => {
-      let next = [...prev];
+      const sameAreaExists = prev.some((existing) => existing.area === item.area);
+      const sameGifExists = prev.some((existing) => existing.gif === item.gif);
 
-      const sameAreaExists = next.some((existing) => existing.area === item.area);
-      const sameGifExists = next.some((existing) => existing.gif === item.gif);
+      if (sameAreaExists || sameGifExists || prev.length >= 2) return prev;
 
-      if (sameAreaExists || sameGifExists || next.length >= 2) {
-        return next;
-      }
-
-      next = [...next, item];
+      const next = [...prev, item];
       gifDistractorsRef.current = next;
       return next;
     });
@@ -410,17 +452,11 @@ export default function App() {
     if (!isPlayingRef.current) return;
 
     const elapsed = getElapsedMs();
-
     if (elapsed >= TEST_DURATION_MS) return;
 
     const phase = getPhaseInfo(elapsed);
 
     if (phase.gifMode === "none") {
-      if (elapsed >= PHASE_3_END) {
-        stopGifSystem();
-        return;
-      }
-
       gifTimer.current = setTimeout(scheduleGifDistractor, 1000);
       return;
     }
@@ -468,9 +504,59 @@ export default function App() {
     gifTimer.current = setTimeout(scheduleGifDistractor, randomGifDelay());
   };
 
+  const playIndependentSound = () => {
+    if (!isPlayingRef.current) return;
+
+    const elapsed = getElapsedMs();
+    const phase = getPhaseInfo(elapsed);
+
+    if (!phase.independentSound) {
+      stopIndependentSound();
+      soundTimer.current = setTimeout(playIndependentSound, 1000);
+      return;
+    }
+
+    if (gifDistractorsRef.current.length > 0 || activeSoundId.current) {
+      soundTimer.current = setTimeout(playIndependentSound, randomSoundDelay());
+      return;
+    }
+
+    if (independentAudioRef.current) {
+      soundTimer.current = setTimeout(playIndependentSound, randomSoundDelay());
+      return;
+    }
+
+    const sound = randomItem(INDEPENDENT_SOUNDS);
+    const audio = new Audio(sound);
+    audio.volume = 0.7;
+    independentAudioRef.current = audio;
+
+    audio.play().catch(() => {
+      if (independentAudioRef.current === audio) {
+        independentAudioRef.current = null;
+      }
+    });
+
+    setTimeout(() => {
+      if (independentAudioRef.current === audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = "";
+        independentAudioRef.current = null;
+      }
+    }, Math.min(10000, phase.phaseEnd - elapsed - 300));
+
+    soundTimer.current = setTimeout(playIndependentSound, 10000 + randomSoundDelay());
+  };
+
   const startGifSystem = () => {
     clearTimeout(gifTimer.current);
     gifTimer.current = setTimeout(scheduleGifDistractor, 1000);
+  };
+
+  const startIndependentSoundSystem = () => {
+    clearTimeout(soundTimer.current);
+    soundTimer.current = setTimeout(playIndependentSound, 1000);
   };
 
   useEffect(() => {
@@ -480,9 +566,10 @@ export default function App() {
       clearTimeout(timer.current);
       clearTimeout(gifTimer.current);
       clearTimeout(testClockTimer.current);
-      clearInterval(countdownTimer.current);
+      clearTimeout(soundTimer.current);
       clearAllGifTimers();
       stopAllGifAudio();
+      stopIndependentSound();
     };
   }, []);
 
@@ -503,9 +590,7 @@ export default function App() {
 
   const registerResponse = () => {
     const now = performance.now();
-
     if (now - lastInputTime.current < 120) return;
-
     lastInputTime.current = now;
     handleResponse();
   };
@@ -534,27 +619,16 @@ export default function App() {
 
     clearTimeout(timer.current);
     clearTimeout(testClockTimer.current);
-    clearInterval(countdownTimer.current);
+    stopAllSystems();
 
     setScene(null);
-    stopGifSystem();
 
     testStartTimeRef.current = performance.now();
     isPlayingRef.current = true;
-    setRemainingSeconds(180);
     setView("PLAY");
 
     startGifSystem();
-
-    countdownTimer.current = setInterval(() => {
-      const elapsed = getElapsedMs();
-      const remaining = Math.max(0, Math.ceil((TEST_DURATION_MS - elapsed) / 1000));
-      setRemainingSeconds(remaining);
-
-      if (elapsed >= PHASE_3_END) {
-        stopGifSystem();
-      }
-    }, 500);
+    startIndependentSoundSystem();
 
     testClockTimer.current = setTimeout(() => {
       finishTest();
@@ -564,7 +638,6 @@ export default function App() {
   const finishTest = () => {
     clearTimeout(timer.current);
     clearTimeout(testClockTimer.current);
-    clearInterval(countdownTimer.current);
 
     const t = currentTrial.current;
 
@@ -586,18 +659,16 @@ export default function App() {
     currentTrial.current = null;
     setScene(null);
     isPlayingRef.current = false;
-    stopGifSystem();
-    setRemainingSeconds(0);
+    stopAllSystems();
     setView("END");
   };
 
   const newTest = () => {
     clearTimeout(timer.current);
     clearTimeout(testClockTimer.current);
-    clearInterval(countdownTimer.current);
 
     isPlayingRef.current = false;
-    stopGifSystem();
+    stopAllSystems();
 
     trialLog.current = [];
     currentTrial.current = null;
@@ -605,7 +676,6 @@ export default function App() {
     testStartTimeRef.current = 0;
 
     setScene(null);
-    setRemainingSeconds(180);
     createNewTarget();
     setView("START");
   };
@@ -614,13 +684,11 @@ export default function App() {
     if (!currentTrial.current) return;
 
     const now = performance.now();
-
     currentTrial.current.responses.push(now);
 
     if (!currentTrial.current.responded) {
       currentTrial.current.responded = true;
-      currentTrial.current.reactionTime =
-        now - currentTrial.current.startTime;
+      currentTrial.current.reactionTime = now - currentTrial.current.startTime;
     }
   };
 
@@ -710,20 +778,12 @@ export default function App() {
 
     const avgReaction =
       correctHits.length > 0
-        ? Math.round(
-            correctHits.reduce((sum, t) => sum + t.reactionTime, 0) /
-              correctHits.length
-          )
+        ? Math.round(correctHits.reduce((sum, t) => sum + t.reactionTime, 0) / correctHits.length)
         : 0;
 
     const accuracy =
       logs.length > 0
-        ? Math.round(
-            ((correctHits.length +
-              nonTargets.filter((t) => !t.responded).length) /
-              logs.length) *
-              100
-          )
+        ? Math.round(((correctHits.length + nonTargets.filter((t) => !t.responded).length) / logs.length) * 100)
         : 0;
 
     return {
@@ -760,7 +820,6 @@ export default function App() {
 
   const getLevelText = (score) => {
     const level = getLevel(score);
-
     if (level === 1) return "İyi Performans";
     if (level === 2) return "Standart Performans";
     if (level === 3) return "Düşük Performans";
@@ -769,7 +828,6 @@ export default function App() {
 
   const getScoreColor = (score) => {
     const level = getLevel(score);
-
     if (level === 1) return "#16A34A";
     if (level === 2) return "#65A30D";
     if (level === 3) return "#F59E0B";
@@ -790,11 +848,7 @@ export default function App() {
     trialLog.current.forEach((trial) => {
       if (trial.isTarget && !trial.responded) attentionScore -= 8;
 
-      if (
-        trial.isTarget &&
-        trial.responded &&
-        trial.reactionTime > LATE_RESPONSE_MS
-      ) {
+      if (trial.isTarget && trial.responded && trial.reactionTime > LATE_RESPONSE_MS) {
         timingScore -= 4;
       }
 
@@ -807,12 +861,7 @@ export default function App() {
       hyperactivityData.push(Math.max(hyperactivityScore, 0));
     });
 
-    return {
-      attentionData,
-      timingData,
-      impulsivityData,
-      hyperactivityData
-    };
+    return { attentionData, timingData, impulsivityData, hyperactivityData };
   };
 
   const buildChartData = () => {
@@ -822,38 +871,10 @@ export default function App() {
     return {
       labels,
       datasets: [
-        {
-          label: "Dikkat",
-          data: series.attentionData,
-          borderColor: "#2563EB",
-          backgroundColor: "#2563EB",
-          tension: 0.25,
-          pointRadius: 3
-        },
-        {
-          label: "Zamanlama",
-          data: series.timingData,
-          borderColor: "#16A34A",
-          backgroundColor: "#16A34A",
-          tension: 0.25,
-          pointRadius: 3
-        },
-        {
-          label: "Dürtüsellik",
-          data: series.impulsivityData,
-          borderColor: "#DC2626",
-          backgroundColor: "#DC2626",
-          tension: 0.25,
-          pointRadius: 3
-        },
-        {
-          label: "Hiperaktivite",
-          data: series.hyperactivityData,
-          borderColor: "#F59E0B",
-          backgroundColor: "#F59E0B",
-          tension: 0.25,
-          pointRadius: 3
-        }
+        { label: "Dikkat", data: series.attentionData, borderColor: "#2563EB", backgroundColor: "#2563EB", tension: 0.25, pointRadius: 3 },
+        { label: "Zamanlama", data: series.timingData, borderColor: "#16A34A", backgroundColor: "#16A34A", tension: 0.25, pointRadius: 3 },
+        { label: "Dürtüsellik", data: series.impulsivityData, borderColor: "#DC2626", backgroundColor: "#DC2626", tension: 0.25, pointRadius: 3 },
+        { label: "Hiperaktivite", data: series.hyperactivityData, borderColor: "#F59E0B", backgroundColor: "#F59E0B", tension: 0.25, pointRadius: 3 }
       ]
     };
   };
@@ -877,19 +898,19 @@ export default function App() {
 
   const getSectionSummary = () => {
     const sections = [
-      "Başlangıç",
-      "Görsel Dikkat Dağıtıcı",
-      "Sesli ve Görsel Dikkat Dağıtıcı",
-      "Kapanış"
+      "Alışma",
+      "Sessiz GIF",
+      "Bağımsız Ses",
+      "Sesli ve Sessiz GIF",
+      "Hızlı Uyaran",
+      "Yavaş Kapanış"
     ];
 
     return sections.map((section) => {
       const list = trialLog.current.filter((t) => t.section === section);
 
       const omissions = list.filter((t) => t.isTarget && !t.responded).length;
-      const late = list.filter(
-        (t) => t.isTarget && t.responded && t.reactionTime > LATE_RESPONSE_MS
-      ).length;
+      const late = list.filter((t) => t.isTarget && t.responded && t.reactionTime > LATE_RESPONSE_MS).length;
       const impulse = list.filter((t) => !t.isTarget && t.responded).length;
       const hyper = list.filter((t) => t.responseCount > 1).length;
 
@@ -911,7 +932,7 @@ export default function App() {
     );
 
     comments.push(
-      "Test 3 dakika sürmüştür. İlk bölümde dikkat dağıtıcı verilmemiş, ikinci bölümde sessiz GIF uyaranları, üçüncü bölümde sesli ve sessiz GIF uyaranları kullanılmış, son bölümde tekrar dikkat dağıtıcılar kaldırılmıştır."
+      "Test 6 aşamadan oluşmuştur. İlk aşama alışma, ikinci aşama sessiz GIF, üçüncü aşama bağımsız ses, dördüncü aşama sesli/sessiz GIF, beşinci aşama yüksek hız ve altıncı aşama yavaş kapanış olarak uygulanmıştır."
     );
 
     if (scores.attention >= 6) comments.push("Dikkat alanında belirgin zorlanma görüldü.");
@@ -965,8 +986,8 @@ export default function App() {
               width: "*",
               stack: [
                 { text: "Rapor Tarihi: " + new Date().toLocaleDateString("tr-TR") },
-                { text: "Test Tipi: 3 dakikalık GIF destekli hedef / hedef dışı uyaran görevi", margin: [0, 6, 0, 0] },
-                { text: "Toplam Test Süresi: 180 saniye", margin: [0, 6, 0, 0] },
+                { text: "Test Tipi: 6 aşamalı hedef / hedef dışı uyaran görevi", margin: [0, 6, 0, 0] },
+                { text: "Toplam Test Süresi: 280 saniye", margin: [0, 6, 0, 0] },
                 { text: "Toplam Deneme: " + metrics.totalTrials, margin: [0, 6, 0, 0] }
               ]
             },
@@ -995,18 +1016,14 @@ export default function App() {
             width: "*",
             table: {
               widths: ["*"],
-              body: [
-                [
-                  {
-                    stack: [
-                      { text: title, color: "white", bold: true, fontSize: 11 },
-                      { text: String(value), color: "white", bold: true, fontSize: 22, margin: [0, 8, 0, 0] }
-                    ],
-                    fillColor: getScoreColor(value),
-                    margin: [10, 10, 10, 10]
-                  }
-                ]
-              ]
+              body: [[{
+                stack: [
+                  { text: title, color: "white", bold: true, fontSize: 11 },
+                  { text: String(value), color: "white", bold: true, fontSize: 22, margin: [0, 8, 0, 0] }
+                ],
+                fillColor: getScoreColor(value),
+                margin: [10, 10, 10, 10]
+              }]]
             },
             layout: "noBorders",
             margin: [0, 0, 8, 0]
@@ -1157,8 +1174,7 @@ export default function App() {
           <p style={{ fontSize: 17, color: "#475569" }}>
             Aşağıdaki nesne hedef olarak seçildi. Test boyunca sadece bu şekil
             ve bu renk birlikte göründüğünde SPACE tuşuna basın. Mouse ile
-            tıklama ve dokunmatik ekranlarda dokunma da cevap olarak kabul
-            edilir. Test toplam 3 dakika sürer.
+            tıklama ve dokunmatik ekranlarda dokunma da cevap olarak kabul edilir.
           </p>
 
           <div
@@ -1218,24 +1234,6 @@ export default function App() {
             userSelect: "none"
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              top: 18,
-              right: 24,
-              zIndex: 20,
-              fontSize: 18,
-              fontWeight: "bold",
-              color: "#142440",
-              background: "#F8FAFC",
-              padding: "8px 14px",
-              borderRadius: 12,
-              border: "1px solid #E2E8F0"
-            }}
-          >
-            Süre: {remainingSeconds} sn
-          </div>
-
           {gifDistractors.map((item) => (
             <img
               key={item.id}
@@ -1366,9 +1364,7 @@ function ScoreBox({ title, value, color }) {
   return (
     <div style={{ background: color, color: "white", padding: 18, borderRadius: 16 }}>
       <strong>{title}</strong>
-      <div style={{ fontSize: 30, fontWeight: "bold", marginTop: 6 }}>
-        {value}
-      </div>
+      <div style={{ fontSize: 30, fontWeight: "bold", marginTop: 6 }}>{value}</div>
     </div>
   );
 }
@@ -1377,9 +1373,7 @@ function MetricBox({ title, value }) {
   return (
     <div style={{ background: "#F1F5F9", color: "#0F172A", padding: 16, borderRadius: 16, border: "1px solid #E2E8F0" }}>
       <strong>{title}</strong>
-      <div style={{ fontSize: 24, fontWeight: "bold", marginTop: 6 }}>
-        {value}
-      </div>
+      <div style={{ fontSize: 24, fontWeight: "bold", marginTop: 6 }}>{value}</div>
     </div>
   );
 }
