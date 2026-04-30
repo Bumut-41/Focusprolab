@@ -212,27 +212,51 @@ export default function App() {
     };
   };
 
-  const createGifPosition = () => {
-    for (let attempt = 0; attempt < 120; attempt++) {
-      const left = 6 + Math.random() * 88;
-      const top = 8 + Math.random() * 84;
+  const getAvailableGifFiles = () => {
+    const activeGifs = gifDistractorsRef.current.map((item) => item.gif);
+    const available = DISTRACTOR_FILES.filter((file) => !activeGifs.includes(file.gif));
 
-      const isInCenterZone = left > 31 && left < 69;
+    if (available.length > 0) return available;
+    return DISTRACTOR_FILES;
+  };
+
+  const createGifPosition = () => {
+    const zones = [
+      { name: "left", leftMin: 13, leftMax: 26, topMin: 18, topMax: 82 },
+      { name: "right", leftMin: 74, leftMax: 87, topMin: 18, topMax: 82 },
+      { name: "top", leftMin: 25, leftMax: 75, topMin: 14, topMax: 25 },
+      { name: "bottom", leftMin: 25, leftMax: 75, topMin: 75, topMax: 86 },
+      { name: "upper-left", leftMin: 15, leftMax: 38, topMin: 16, topMax: 36 },
+      { name: "upper-right", leftMin: 62, leftMax: 85, topMin: 16, topMax: 36 },
+      { name: "lower-left", leftMin: 15, leftMax: 38, topMin: 64, topMax: 84 },
+      { name: "lower-right", leftMin: 62, leftMax: 85, topMin: 64, topMax: 84 }
+    ];
+
+    for (let attempt = 0; attempt < 180; attempt++) {
+      const zone = randomItem(zones);
+      const left = zone.leftMin + Math.random() * (zone.leftMax - zone.leftMin);
+      const top = zone.topMin + Math.random() * (zone.topMax - zone.topMin);
+
+      const isMainObjectBlockedZone =
+        left > 36 &&
+        left < 64 &&
+        top > 30 &&
+        top < 70;
 
       const isTooCloseToAnotherGif = gifDistractorsRef.current.some((item) => {
         const dx = Math.abs(item.left - left);
         const dy = Math.abs(item.top - top);
-        return dx < 30 && dy < 30;
+        return dx < 34 && dy < 34;
       });
 
-      if (!isInCenterZone && !isTooCloseToAnotherGif) {
+      if (!isMainObjectBlockedZone && !isTooCloseToAnotherGif) {
         return { left, top };
       }
     }
 
     return Math.random() > 0.5
-      ? { left: 14, top: 20 + Math.random() * 60 }
-      : { left: 86, top: 20 + Math.random() * 60 };
+      ? { left: 18, top: 22 + Math.random() * 56 }
+      : { left: 82, top: 22 + Math.random() * 56 };
   };
 
   const stopGifAudio = (id) => {
@@ -306,11 +330,14 @@ export default function App() {
 
     if (phase.gifMode === "none") return;
 
-    const maxAllowedDuration = Math.min(randomGifDuration(), phase.gifPhaseEnd - elapsed - 200);
+    const maxAllowedDuration = Math.min(
+      randomGifDuration(),
+      phase.gifPhaseEnd - elapsed - 300
+    );
 
     if (maxAllowedDuration < 1500) return;
 
-    const file = randomItem(DISTRACTOR_FILES);
+    const file = randomItem(getAvailableGifFiles());
     const id = String(Date.now() + Math.random());
     const position = createGifPosition();
 
@@ -330,7 +357,7 @@ export default function App() {
       duration: maxAllowedDuration,
       left: position.left,
       top: position.top,
-      size: 260 + Math.floor(Math.random() * 120)
+      size: 250 + Math.floor(Math.random() * 110)
     };
 
     setGifDistractors((prev) => {
@@ -341,6 +368,12 @@ export default function App() {
         clearGifRemoveTimer(removed.id);
         stopGifAudio(removed.id);
         next = next.slice(1);
+      }
+
+      const alreadySameGif = next.some((existing) => existing.gif === item.gif);
+
+      if (alreadySameGif) {
+        return next;
       }
 
       next = [...next, item];
@@ -387,11 +420,34 @@ export default function App() {
     addGifDistractor({ forceSilent: phase.gifMode === "silent" });
 
     const canAddSecondSilentGif =
-      phase.gifMode === "mixed" && Math.random() > 0.5;
+      phase.gifMode === "mixed" &&
+      gifDistractorsRef.current.length < 2 &&
+      Math.random() > 0.62;
 
     if (canAddSecondSilentGif) {
       setTimeout(() => {
-        if (isPlayingRef.current && getPhaseInfo().gifMode === "mixed") {
+        if (
+          isPlayingRef.current &&
+          getPhaseInfo().gifMode === "mixed" &&
+          gifDistractorsRef.current.length < 2
+        ) {
+          addGifDistractor({ forceSilent: true });
+        }
+      }, randomGifDelay());
+    }
+
+    const canAddSecondSilentInSilentPhase =
+      phase.gifMode === "silent" &&
+      gifDistractorsRef.current.length < 2 &&
+      Math.random() > 0.7;
+
+    if (canAddSecondSilentInSilentPhase) {
+      setTimeout(() => {
+        if (
+          isPlayingRef.current &&
+          getPhaseInfo().gifMode === "silent" &&
+          gifDistractorsRef.current.length < 2
+        ) {
           addGifDistractor({ forceSilent: true });
         }
       }, randomGifDelay());
@@ -440,10 +496,6 @@ export default function App() {
 
     lastInputTime.current = now;
     handleResponse();
-  };
-
-  const getSectionName = () => {
-    return getPhaseInfo().name;
   };
 
   const createNonTargetObject = () => {
@@ -1182,10 +1234,13 @@ export default function App() {
                 left: `${item.left}%`,
                 top: `${item.top}%`,
                 width: item.size,
+                maxWidth: "34%",
+                maxHeight: "42%",
                 height: "auto",
                 transform: "translate(-50%, -50%)",
                 pointerEvents: "none",
-                zIndex: 1
+                zIndex: 1,
+                objectFit: "contain"
               }}
             />
           ))}
