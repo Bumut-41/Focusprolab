@@ -170,9 +170,7 @@ export default function App() {
   };
 
   const createGifPosition = () => {
-    let bestPosition = { left: 10, top: 10 };
-
-    for (let attempt = 0; attempt < 100; attempt++) {
+    for (let attempt = 0; attempt < 120; attempt++) {
       const left = 6 + Math.random() * 88;
       const top = 8 + Math.random() * 84;
 
@@ -181,17 +179,17 @@ export default function App() {
       const isTooCloseToAnotherGif = gifDistractorsRef.current.some((item) => {
         const dx = Math.abs(item.left - left);
         const dy = Math.abs(item.top - top);
-        return dx < 26 && dy < 26;
+        return dx < 30 && dy < 30;
       });
 
       if (!isInCenterZone && !isTooCloseToAnotherGif) {
         return { left, top };
       }
-
-      bestPosition = { left, top };
     }
 
-    return bestPosition;
+    return Math.random() > 0.5
+      ? { left: 14, top: 20 + Math.random() * 60 }
+      : { left: 86, top: 20 + Math.random() * 60 };
   };
 
   const stopGifAudio = (id) => {
@@ -281,7 +279,7 @@ export default function App() {
       duration,
       left: position.left,
       top: position.top,
-      size: 170 + Math.floor(Math.random() * 80)
+      size: 260 + Math.floor(Math.random() * 120)
     };
 
     setGifDistractors((prev) => {
